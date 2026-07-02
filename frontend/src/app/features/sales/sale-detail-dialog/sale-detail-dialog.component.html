@@ -1,0 +1,134 @@
+<div class="flex max-h-[88vh] w-full flex-col">
+  <div class="flex items-center justify-between border-b border-slate-200 px-6 py-4">
+    <div class="flex items-center gap-3">
+      <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-100 text-blue-600">
+        <span class="material-icons !text-[22px]">receipt</span>
+      </div>
+      <h2 class="text-base font-semibold text-slate-800">
+        Venta @if (sale()?.saleNumber) { <span>#{{ sale()?.saleNumber }}</span> }
+      </h2>
+    </div>
+    <button type="button" (click)="close()" class="rounded-lg p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600" aria-label="Cerrar">
+      <span class="material-icons">close</span>
+    </button>
+  </div>
+
+  <div class="min-h-0 flex-1 overflow-y-auto px-6 py-5">
+    @if (loading()) {
+      <div class="flex flex-col items-center justify-center gap-3 py-16 text-slate-400">
+        <span class="h-8 w-8 animate-spin rounded-full border-2 border-slate-200 border-t-blue-600"></span>
+        <p class="text-sm">Cargando venta...</p>
+      </div>
+    } @else if (sale()) {
+      @if (sale(); as s) {
+        <div class="mb-5 flex flex-wrap items-center gap-2">
+          @if (s.status === 'COMPLETED') {
+            <span class="inline-flex rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-medium text-emerald-700">Completada</span>
+          } @else {
+            <span class="inline-flex rounded-full bg-rose-100 px-2.5 py-0.5 text-xs font-medium text-rose-700">Cancelada</span>
+          }
+          <span class="inline-flex rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-medium text-blue-700">{{ paymentLabels[s.paymentMethod] }}</span>
+        </div>
+
+        <dl class="grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2">
+          <div>
+            <dt class="text-xs font-medium uppercase tracking-wide text-slate-400">Fecha</dt>
+            <dd class="mt-1 text-sm text-slate-700">{{ s.saleDate | date: 'dd/MM/yyyy HH:mm' }}</dd>
+          </div>
+          <div>
+            <dt class="text-xs font-medium uppercase tracking-wide text-slate-400">Cajero</dt>
+            <dd class="mt-1 text-sm text-slate-700">{{ s.cashier?.fullName || s.cashier?.username || '—' }}</dd>
+          </div>
+          <div class="sm:col-span-2">
+            <dt class="text-xs font-medium uppercase tracking-wide text-slate-400">Cliente</dt>
+            <dd class="mt-1 text-sm text-slate-700">
+              {{ s.customer?.fullName || 'Consumidor final' }}{{ s.customer?.nit ? ' · ' + s.customer?.nit : '' }}
+            </dd>
+          </div>
+          <div class="sm:col-span-2">
+            <dt class="text-xs font-medium uppercase tracking-wide text-slate-400">Notas</dt>
+            <dd class="mt-1 text-sm text-slate-700">{{ s.notes || 'Sin notas' }}</dd>
+          </div>
+        </dl>
+
+        <h3 class="mb-2 mt-6 text-sm font-semibold text-slate-800">Productos</h3>
+        <div class="overflow-x-auto rounded-xl border border-slate-200">
+          <table class="min-w-full divide-y divide-slate-200 text-sm">
+            <thead class="bg-slate-50 text-left text-xs font-medium uppercase tracking-wide text-slate-500">
+              <tr>
+                <th class="px-3 py-2.5">Producto</th>
+                <th class="px-3 py-2.5">Código</th>
+                <th class="px-3 py-2.5 text-right">Cantidad</th>
+                <th class="px-3 py-2.5 text-right">Precio</th>
+                <th class="px-3 py-2.5 text-right">Subtotal</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100">
+              @for (item of s.items; track item.productId) {
+                <tr>
+                  <td class="px-3 py-2 font-medium text-slate-800">{{ item.productName }}</td>
+                  <td class="px-3 py-2 font-mono text-xs text-slate-600">{{ item.barcode || '—' }}</td>
+                  <td class="px-3 py-2 text-right text-slate-700">{{ item.quantity | number: '1.0-3' }}</td>
+                  <td class="px-3 py-2 text-right text-slate-700">Q {{ item.unitPrice | number: '1.2-2' }}</td>
+                  <td class="px-3 py-2 text-right font-medium text-slate-800">Q {{ item.lineTotal | number: '1.2-2' }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+
+        <div class="mt-4 flex justify-end">
+          <div class="w-full max-w-xs space-y-1.5 rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm">
+            <div class="flex justify-between text-slate-500">
+              <span>Subtotal</span>
+              <span>Q {{ s.subtotal | number: '1.2-2' }}</span>
+            </div>
+            <div class="flex justify-between text-slate-500">
+              <span>Descuento</span>
+              <span>Q {{ s.discountTotal | number: '1.2-2' }}</span>
+            </div>
+            <div class="flex justify-between text-slate-500">
+              <span>Impuesto</span>
+              <span>Q {{ s.taxTotal | number: '1.2-2' }}</span>
+            </div>
+            <div class="flex justify-between border-t border-slate-200 pt-1.5 text-base font-semibold text-slate-800">
+              <span>Total</span>
+              <span>Q {{ s.total | number: '1.2-2' }}</span>
+            </div>
+          </div>
+        </div>
+      }
+    }
+  </div>
+
+  <div class="flex flex-wrap justify-end gap-3 border-t border-slate-200 px-6 py-4">
+    <button type="button" (click)="close()" class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-100">
+      Cerrar
+    </button>
+    @if (sale()) {
+      <button
+        type="button"
+        (click)="printReceipt()"
+        class="flex items-center justify-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-4 py-2 text-sm font-medium text-blue-600 transition hover:bg-blue-100"
+      >
+        <span class="material-icons !text-[18px]">print</span>
+        <span>Imprimir / Guardar PDF</span>
+      </button>
+    }
+    @if (canCancel()) {
+      <button
+        type="button"
+        (click)="cancelSale()"
+        [disabled]="processing()"
+        class="flex items-center justify-center gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-2 text-sm font-medium text-red-600 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-70"
+      >
+        @if (processing()) {
+          <span class="h-4 w-4 animate-spin rounded-full border-2 border-red-300 border-t-red-600"></span>
+          <span>Cancelando...</span>
+        } @else {
+          <span>Cancelar venta</span>
+        }
+      </button>
+    }
+  </div>
+</div>

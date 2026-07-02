@@ -1,0 +1,133 @@
+<section>
+  <!-- Header del módulo -->
+  <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+    <div>
+      <h1 class="text-2xl font-semibold text-slate-800">Clientes</h1>
+      <p class="mt-1 text-sm text-slate-500">Administra clientes registrados para ventas y seguimiento comercial</p>
+    </div>
+    <button
+      type="button"
+      (click)="openCreate()"
+      class="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+    >
+      <span class="material-icons !text-[20px]">add</span>
+      Nuevo cliente
+    </button>
+  </div>
+
+  <!-- Tarjetas de resumen -->
+  <div class="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
+    <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+      <p class="text-xs font-medium uppercase tracking-wide text-slate-400">Total</p>
+      <p class="mt-1 text-2xl font-semibold text-slate-800">{{ stats().total }}</p>
+    </div>
+    <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+      <p class="text-xs font-medium uppercase tracking-wide text-slate-400">Activos</p>
+      <p class="mt-1 text-2xl font-semibold text-emerald-600">{{ stats().active }}</p>
+    </div>
+    <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+      <p class="text-xs font-medium uppercase tracking-wide text-slate-400">Inactivos</p>
+      <p class="mt-1 text-2xl font-semibold text-slate-500">{{ stats().inactive }}</p>
+    </div>
+    <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+      <p class="text-xs font-medium uppercase tracking-wide text-slate-400">Con NIT</p>
+      <p class="mt-1 text-2xl font-semibold text-blue-600">{{ stats().withNit }}</p>
+    </div>
+  </div>
+
+  <!-- Barra de búsqueda -->
+  <div class="mb-4">
+    <div class="relative max-w-md">
+      <span class="material-icons pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 !text-[20px] text-slate-400">search</span>
+      <input
+        type="text"
+        [formControl]="searchControl"
+        placeholder="Buscar por nombre, NIT, teléfono o email"
+        class="w-full rounded-xl border border-slate-300 bg-white py-2.5 pl-10 pr-4 text-sm text-slate-900 placeholder:text-slate-400 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500"
+      />
+    </div>
+  </div>
+
+  <!-- Contenedor de tabla -->
+  <div class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+    @if (loading()) {
+      <div class="flex flex-col items-center justify-center gap-3 py-16 text-slate-400">
+        <span class="h-8 w-8 animate-spin rounded-full border-2 border-slate-200 border-t-blue-600"></span>
+        <p class="text-sm">Cargando clientes...</p>
+      </div>
+    } @else if (customers().length === 0) {
+      <div class="flex flex-col items-center justify-center gap-2 py-16 text-center">
+        <span class="material-icons !text-[40px] text-slate-300">groups</span>
+        @if (hasSearchTerm()) {
+          <p class="text-sm font-medium text-slate-600">Sin resultados para tu búsqueda</p>
+          <p class="text-xs text-slate-400">Intenta con otro nombre, NIT, teléfono o email</p>
+        } @else {
+          <p class="text-sm font-medium text-slate-600">Aún no hay clientes registrados</p>
+          <button type="button" (click)="openCreate()" class="mt-2 text-sm font-medium text-blue-600 hover:text-blue-700">
+            Crear el primer cliente
+          </button>
+        }
+      </div>
+    } @else {
+      <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-slate-200 text-sm">
+          <thead class="bg-slate-50 text-left text-xs font-medium uppercase tracking-wide text-slate-500">
+            <tr>
+              <th class="px-4 py-3">Cliente</th>
+              <th class="px-4 py-3">NIT</th>
+              <th class="px-4 py-3">Teléfono</th>
+              <th class="px-4 py-3">Email</th>
+              <th class="px-4 py-3 text-center">Estado</th>
+              <th class="px-4 py-3 text-right">Acciones</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-100">
+            @for (customer of customers(); track customer.id) {
+              <tr class="transition-colors hover:bg-slate-50">
+                <td class="px-4 py-3 font-medium text-slate-800">{{ customer.fullName }}</td>
+                <td class="whitespace-nowrap px-4 py-3 text-slate-600">{{ customer.nit || 'Consumidor final' }}</td>
+                <td class="whitespace-nowrap px-4 py-3 text-slate-600">{{ customer.phone || 'No registrado' }}</td>
+                <td class="whitespace-nowrap px-4 py-3 text-slate-600">{{ customer.email || 'No registrado' }}</td>
+                <td class="whitespace-nowrap px-4 py-3 text-center">
+                  @if (customer.active) {
+                    <span class="inline-flex rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-medium text-emerald-700">Activo</span>
+                  } @else {
+                    <span class="inline-flex rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-500">Inactivo</span>
+                  }
+                </td>
+                <td class="whitespace-nowrap px-4 py-3 text-right">
+                  <div class="flex items-center justify-end gap-1">
+                    <button
+                      type="button"
+                      (click)="openView(customer)"
+                      class="rounded-lg p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
+                      title="Ver"
+                    >
+                      <span class="material-icons !text-[20px]">visibility</span>
+                    </button>
+                    <button
+                      type="button"
+                      (click)="openEdit(customer)"
+                      class="rounded-lg p-1.5 text-slate-400 transition hover:bg-blue-50 hover:text-blue-600"
+                      title="Editar"
+                    >
+                      <span class="material-icons !text-[20px]">edit</span>
+                    </button>
+                    <button
+                      type="button"
+                      (click)="confirmDelete(customer)"
+                      class="rounded-lg p-1.5 text-slate-400 transition hover:bg-red-50 hover:text-red-600"
+                      title="Eliminar"
+                    >
+                      <span class="material-icons !text-[20px]">delete</span>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </div>
+</section>

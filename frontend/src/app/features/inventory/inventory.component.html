@@ -1,0 +1,207 @@
+<section>
+  <!-- Header del módulo -->
+  <div class="mb-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+    <div>
+      <h1 class="text-2xl font-semibold text-slate-800">Inventario</h1>
+      <p class="mt-1 text-sm text-slate-500">Controla existencias, movimientos y ajustes de stock</p>
+    </div>
+    <div class="flex flex-wrap gap-3">
+      <button
+        type="button"
+        (click)="openAdjustment('in')"
+        class="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2"
+      >
+        <span class="material-icons !text-[20px]">south_west</span>
+        Ajuste de entrada
+      </button>
+      <button
+        type="button"
+        (click)="openAdjustment('out')"
+        class="inline-flex items-center justify-center gap-2 rounded-xl bg-amber-600 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-amber-700 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2"
+      >
+        <span class="material-icons !text-[20px]">north_east</span>
+        Ajuste de salida
+      </button>
+    </div>
+  </div>
+
+  <!-- Tarjetas de resumen -->
+  <div class="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
+    <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+      <p class="text-xs font-medium uppercase tracking-wide text-slate-400">Movimientos</p>
+      <p class="mt-1 text-2xl font-semibold text-slate-800">{{ stats().totalMovements }}</p>
+    </div>
+    <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+      <p class="text-xs font-medium uppercase tracking-wide text-slate-400">Stock bajo</p>
+      <p class="mt-1 text-2xl font-semibold text-amber-600">{{ stats().lowStockCount }}</p>
+    </div>
+    <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+      <p class="text-xs font-medium uppercase tracking-wide text-slate-400">Entradas del día</p>
+      <p class="mt-1 text-2xl font-semibold text-emerald-600">{{ stats().incomingToday }}</p>
+    </div>
+    <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+      <p class="text-xs font-medium uppercase tracking-wide text-slate-400">Salidas del día</p>
+      <p class="mt-1 text-2xl font-semibold text-rose-600">{{ stats().outgoingToday }}</p>
+    </div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="mb-4 inline-flex rounded-xl border border-slate-200 bg-white p-1 shadow-sm">
+    <button
+      type="button"
+      (click)="setTab('movements')"
+      class="rounded-lg px-4 py-2 text-sm font-medium transition"
+      [class]="activeTab() === 'movements' ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-100'"
+    >
+      Movimientos
+    </button>
+    <button
+      type="button"
+      (click)="setTab('lowStock')"
+      class="rounded-lg px-4 py-2 text-sm font-medium transition"
+      [class]="activeTab() === 'lowStock' ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-100'"
+    >
+      Stock bajo
+    </button>
+  </div>
+
+  <!-- ===================== SECCIÓN MOVIMIENTOS ===================== -->
+  @if (activeTab() === 'movements') {
+    <!-- Filtros -->
+    <div class="mb-4 flex flex-col gap-3 sm:flex-row">
+      <div class="relative flex-1 sm:max-w-md">
+        <span class="material-icons pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 !text-[20px] text-slate-400">search</span>
+        <input
+          type="text"
+          [formControl]="searchControl"
+          placeholder="Buscar por producto o código de barras"
+          class="w-full rounded-xl border border-slate-300 bg-white py-2.5 pl-10 pr-4 text-sm text-slate-900 placeholder:text-slate-400 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500"
+        />
+      </div>
+      <select
+        [formControl]="typeControl"
+        class="rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500"
+      >
+        <option value="">Todos los tipos</option>
+        @for (type of movementTypes; track type) {
+          <option [value]="type">{{ movementLabels[type] }}</option>
+        }
+      </select>
+    </div>
+
+    <div class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+      @if (loadingMovements()) {
+        <div class="flex flex-col items-center justify-center gap-3 py-16 text-slate-400">
+          <span class="h-8 w-8 animate-spin rounded-full border-2 border-slate-200 border-t-blue-600"></span>
+          <p class="text-sm">Cargando movimientos...</p>
+        </div>
+      } @else if (filteredMovements().length === 0) {
+        <div class="flex flex-col items-center justify-center gap-2 py-16 text-center">
+          <span class="material-icons !text-[40px] text-slate-300">swap_vert</span>
+          @if (movements().length === 0) {
+            <p class="text-sm font-medium text-slate-600">Aún no hay movimientos registrados</p>
+          } @else {
+            <p class="text-sm font-medium text-slate-600">Sin movimientos para los filtros aplicados</p>
+          }
+        </div>
+      } @else {
+        <div class="overflow-x-auto">
+          <table class="min-w-full divide-y divide-slate-200 text-sm">
+            <thead class="bg-slate-50 text-left text-xs font-medium uppercase tracking-wide text-slate-500">
+              <tr>
+                <th class="px-4 py-3">Fecha</th>
+                <th class="px-4 py-3">Producto</th>
+                <th class="px-4 py-3">Código</th>
+                <th class="px-4 py-3">Tipo</th>
+                <th class="px-4 py-3 text-right">Cantidad</th>
+                <th class="px-4 py-3 text-right">Stock ant.</th>
+                <th class="px-4 py-3 text-right">Stock nuevo</th>
+                <th class="px-4 py-3 text-right">Costo unit.</th>
+                <th class="px-4 py-3">Notas</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100">
+              @for (m of filteredMovements(); track m.id) {
+                <tr class="transition-colors hover:bg-slate-50">
+                  <td class="whitespace-nowrap px-4 py-3 text-slate-500">{{ m.createdAt | date: 'dd/MM/yyyy HH:mm' }}</td>
+                  <td class="px-4 py-3 font-medium text-slate-800">{{ m.productName || '—' }}</td>
+                  <td class="whitespace-nowrap px-4 py-3 font-mono text-xs text-slate-600">{{ m.barcode || '—' }}</td>
+                  <td class="whitespace-nowrap px-4 py-3">
+                    <span class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium" [class]="badgeClass(m.movementType)">
+                      {{ movementLabels[m.movementType] }}
+                    </span>
+                  </td>
+                  <td class="whitespace-nowrap px-4 py-3 text-right font-medium" [class]="isIncoming(m.movementType) ? 'text-emerald-600' : 'text-rose-600'">
+                    {{ isIncoming(m.movementType) ? '+' : '−' }}{{ m.quantity | number: '1.0-3' }}
+                  </td>
+                  <td class="whitespace-nowrap px-4 py-3 text-right text-slate-500">{{ m.previousStock | number: '1.0-3' }}</td>
+                  <td class="whitespace-nowrap px-4 py-3 text-right text-slate-700">{{ m.newStock | number: '1.0-3' }}</td>
+                  <td class="whitespace-nowrap px-4 py-3 text-right text-slate-600">
+                    {{ m.unitCost !== null && m.unitCost !== undefined ? 'Q ' + (m.unitCost | number: '1.2-2') : '—' }}
+                  </td>
+                  <td class="max-w-[16rem] truncate px-4 py-3 text-slate-500" [title]="m.notes || ''">{{ m.notes || '—' }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    </div>
+  }
+
+  <!-- ===================== SECCIÓN STOCK BAJO ===================== -->
+  @if (activeTab() === 'lowStock') {
+    <div class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+      @if (loadingLowStock()) {
+        <div class="flex flex-col items-center justify-center gap-3 py-16 text-slate-400">
+          <span class="h-8 w-8 animate-spin rounded-full border-2 border-slate-200 border-t-blue-600"></span>
+          <p class="text-sm">Cargando stock bajo...</p>
+        </div>
+      } @else if (lowStock().length === 0) {
+        <div class="flex flex-col items-center justify-center gap-2 py-16 text-center">
+          <span class="material-icons !text-[40px] text-emerald-300">check_circle</span>
+          <p class="text-sm font-medium text-slate-600">No hay productos con stock bajo</p>
+          <p class="text-xs text-slate-400">Todo el inventario está por encima de su mínimo</p>
+        </div>
+      } @else {
+        <div class="overflow-x-auto">
+          <table class="min-w-full divide-y divide-slate-200 text-sm">
+            <thead class="bg-slate-50 text-left text-xs font-medium uppercase tracking-wide text-slate-500">
+              <tr>
+                <th class="px-4 py-3">Producto</th>
+                <th class="px-4 py-3">Código</th>
+                <th class="px-4 py-3">Unidad</th>
+                <th class="px-4 py-3 text-right">Stock actual</th>
+                <th class="px-4 py-3 text-right">Stock mínimo</th>
+                <th class="px-4 py-3 text-right">Faltante</th>
+                <th class="px-4 py-3 text-right">Acción</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100">
+              @for (item of lowStock(); track item.productId) {
+                <tr class="transition-colors hover:bg-slate-50">
+                  <td class="px-4 py-3 font-medium text-slate-800">{{ item.name }}</td>
+                  <td class="whitespace-nowrap px-4 py-3 font-mono text-xs text-slate-600">{{ item.barcode }}</td>
+                  <td class="whitespace-nowrap px-4 py-3 text-slate-500">{{ item.unitMeasureName || '—' }}</td>
+                  <td class="whitespace-nowrap px-4 py-3 text-right font-medium text-amber-600">{{ item.currentStock | number: '1.0-3' }}</td>
+                  <td class="whitespace-nowrap px-4 py-3 text-right text-slate-500">{{ item.minStock | number: '1.0-3' }}</td>
+                  <td class="whitespace-nowrap px-4 py-3 text-right text-rose-600">{{ item.missingQuantity | number: '1.0-3' }}</td>
+                  <td class="whitespace-nowrap px-4 py-3 text-right">
+                    <button
+                      type="button"
+                      (click)="adjustFromLowStock(item)"
+                      class="inline-flex items-center gap-1.5 rounded-lg bg-emerald-50 px-3 py-1.5 text-xs font-medium text-emerald-700 transition hover:bg-emerald-100"
+                    >
+                      <span class="material-icons !text-[16px]">south_west</span>
+                      Ajustar entrada
+                    </button>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    </div>
+  }
+</section>

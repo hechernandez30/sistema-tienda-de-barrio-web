@@ -1,0 +1,41 @@
+spring:
+  application:
+    name: sistema-tienda-de-barrio-web
+  datasource:
+    # En Docker se inyecta SPRING_DATASOURCE_URL/USERNAME/PASSWORD.
+    # En desarrollo local se usan las variables DB_* (o sus valores por defecto).
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:bd_tienda}}
+    username: ${SPRING_DATASOURCE_USERNAME:${DB_USER:postgres}}
+    password: ${SPRING_DATASOURCE_PASSWORD:${DB_PASSWORD:12345}}
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+    show-sql: false
+
+server:
+  port: ${SERVER_PORT:8080}
+
+app:
+  jwt:
+    secret: ${JWT_SECRET:change-this-secret-to-a-long-random-value-at-least-256-bits}
+    expiration-minutes: ${JWT_EXPIRATION_MINUTES:480}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: when_authorized
+
+logging:
+  level:
+    org.springframework.security: INFO
+    com.tiendadebarrio: DEBUG

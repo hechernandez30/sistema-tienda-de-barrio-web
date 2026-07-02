@@ -1,0 +1,13 @@
+{
+  "name": "manual-usuario-word",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Generador del Manual de Usuario en formato Word (.docx) a partir del Markdown.",
+  "type": "commonjs",
+  "scripts": {
+    "build": "node generate.js"
+  },
+  "dependencies": {
+    "docx": "^9.0.2"
+  }
+}

@@ -1,0 +1,142 @@
+<div
+  class="relative flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-50 via-blue-50 to-slate-100 px-4 py-10 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950"
+>
+  <div class="absolute right-4 top-4">
+    <app-theme-toggle />
+  </div>
+  <div class="w-full max-w-[420px]">
+    <!-- Card -->
+    <div
+      class="rounded-2xl border border-slate-200 bg-white/90 p-8 shadow-xl backdrop-blur"
+    >
+      <!-- Encabezado -->
+      <div class="mb-8 flex flex-col items-center text-center">
+        <img
+          src="logo.png"
+          alt="Variedades Hernández"
+          class="mb-4 h-28 w-28 rounded-full object-cover shadow-lg ring-1 ring-slate-200 dark:ring-slate-700"
+        />
+        <p class="mt-1 text-sm text-slate-500">
+          Ingresa tus credenciales para continuar
+        </p>
+      </div>
+
+      <!-- Alerta de error del backend -->
+      @if (errorMessage()) {
+        <div
+          class="mb-5 flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+        >
+          <span class="material-icons !text-[20px]">error_outline</span>
+          <span>{{ errorMessage() }}</span>
+        </div>
+      }
+
+      <form
+        [formGroup]="form"
+        (ngSubmit)="submit()"
+        class="flex flex-col gap-5"
+        novalidate
+      >
+        <!-- Usuario -->
+        <div>
+          <label
+            for="username"
+            class="mb-1.5 block text-sm font-medium text-slate-700"
+            >Usuario</label
+          >
+          <div class="relative">
+            <span
+              class="material-icons pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 !text-[20px] text-slate-400"
+            >
+              person
+            </span>
+            <input
+              id="username"
+              type="text"
+              formControlName="username"
+              autocomplete="username"
+              placeholder="Ingresa tu usuario"
+              class="w-full rounded-xl border border-slate-300 bg-white py-3 pl-10 pr-4 text-sm text-slate-900 placeholder:text-slate-400 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500"
+              [class.border-red-400]="
+                form.controls.username.touched && form.controls.username.invalid
+              "
+            />
+          </div>
+          @if (
+            form.controls.username.touched &&
+            form.controls.username.hasError("required")
+          ) {
+            <p class="mt-1.5 text-xs text-red-600">El usuario es obligatorio</p>
+          }
+        </div>
+
+        <!-- Contraseña -->
+        <div>
+          <label
+            for="password"
+            class="mb-1.5 block text-sm font-medium text-slate-700"
+            >Contraseña</label
+          >
+          <div class="relative">
+            <span
+              class="material-icons pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 !text-[20px] text-slate-400"
+            >
+              lock
+            </span>
+            <input
+              id="password"
+              [type]="hidePassword() ? 'password' : 'text'"
+              formControlName="password"
+              autocomplete="current-password"
+              placeholder="Ingresa tu contraseña"
+              class="w-full rounded-xl border border-slate-300 bg-white py-3 pl-10 pr-12 text-sm text-slate-900 placeholder:text-slate-400 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500"
+              [class.border-red-400]="
+                form.controls.password.touched && form.controls.password.invalid
+              "
+            />
+            <button
+              type="button"
+              (click)="togglePassword()"
+              class="absolute right-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
+              [attr.aria-label]="
+                hidePassword() ? 'Mostrar contraseña' : 'Ocultar contraseña'
+              "
+            >
+              <span class="material-icons !text-[20px]">{{
+                hidePassword() ? "visibility_off" : "visibility"
+              }}</span>
+            </button>
+          </div>
+          @if (
+            form.controls.password.touched &&
+            form.controls.password.hasError("required")
+          ) {
+            <p class="mt-1.5 text-xs text-red-600">
+              La contraseña es obligatoria
+            </p>
+          }
+        </div>
+
+        <!-- Botón -->
+        <button
+          type="submit"
+          [disabled]="loading()"
+          class="mt-1 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-blue-600 text-sm font-medium text-white transition hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-70"
+        >
+          @if (loading()) {
+            <span
+              class="h-5 w-5 animate-spin rounded-full border-2 border-white/40 border-t-white"
+            ></span>
+            <span>Ingresando...</span>
+          } @else {
+            <span>Iniciar sesión</span>
+          }
+        </button>
+      </form>
+    </div>
+
+    <p class="mt-6 text-center text-xs text-slate-400">
+      Variedades Hernández &copy; 2026
+    </p>
+  </div>
+</div>

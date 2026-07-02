@@ -1,0 +1,38 @@
+<div class="w-full">
+  <div class="flex items-center justify-between border-b border-slate-200 px-6 py-4">
+    <div class="flex items-center gap-3">
+      <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-100 text-blue-600">
+        <span class="material-icons !text-[22px]">badge</span>
+      </div>
+      <h2 class="text-base font-semibold text-slate-800">Detalle del rol</h2>
+    </div>
+    <button type="button" (click)="close()" class="rounded-lg p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600" aria-label="Cerrar">
+      <span class="material-icons">close</span>
+    </button>
+  </div>
+
+  <div class="space-y-4 px-6 py-5">
+    <div class="flex flex-wrap items-center gap-2">
+      <span class="inline-flex rounded-full bg-blue-100 px-3 py-1 text-sm font-semibold text-blue-700">{{ role.name }}</span>
+      @if (role.active) {
+        <span class="inline-flex rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-medium text-emerald-700">Activo</span>
+      } @else {
+        <span class="inline-flex rounded-full bg-slate-200 px-2.5 py-0.5 text-xs font-medium text-slate-600">Inactivo</span>
+      }
+    </div>
+
+    <div>
+      <p class="text-xs font-medium uppercase tracking-wide text-slate-400">Descripción</p>
+      <p class="mt-1 text-sm text-slate-700">{{ role.description || 'Sin descripción' }}</p>
+    </div>
+
+    <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
+      <p class="text-xs font-medium uppercase tracking-wide text-slate-400">Alcance funcional</p>
+      <p class="mt-1 text-sm text-slate-700">{{ explanation }}</p>
+    </div>
+  </div>
+
+  <div class="flex justify-end border-t border-slate-200 px-6 py-4">
+    <button type="button" (click)="close()" class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-100">Cerrar</button>
+  </div>
+</div>

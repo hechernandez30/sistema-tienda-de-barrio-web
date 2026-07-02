@@ -1,0 +1,83 @@
+# ============================================================
+# Sistema Tienda de Barrio Web - Orquestación con Docker Compose
+# Servicios: postgres (BD), backend (Spring Boot), frontend (Angular + Nginx)
+# Levantar todo:  docker compose up -d --build
+# Entrar al sistema:  http://localhost  (o http://IP_DEL_SERVIDOR)
+# ============================================================
+
+services:
+  # ----------------------------------------------------------
+  # Base de datos PostgreSQL
+  # ----------------------------------------------------------
+  postgres:
+    image: postgres:16
+    container_name: tienda_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-tienda_barrio_db}
+      POSTGRES_USER: ${POSTGRES_USER:-tienda_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-TbPostgres_9vK42mQxR7pL2026}
+    ports:
+      # Se publica para soporte/backups. Puede quitarse si no se necesita acceso externo.
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      # Scripts de inicialización: SOLO se ejecutan la primera vez (volumen vacío).
+      - ./docker/postgres/init:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-tienda_user} -d ${POSTGRES_DB:-tienda_barrio_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - tienda_net
+
+  # ----------------------------------------------------------
+  # Backend Spring Boot
+  # ----------------------------------------------------------
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: tienda_backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      # Conexión a la BD por el NOMBRE DEL SERVICIO Docker (no localhost).
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-tienda_barrio_db}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-tienda_user}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-TbPostgres_9vK42mQxR7pL2026}
+      JWT_SECRET: ${JWT_SECRET:-TbJwtSecret_8fC4wZp91LmQx73RsTiendaBarrioHernandez2026}
+      JWT_EXPIRATION_MINUTES: ${JWT_EXPIRATION_MINUTES:-480}
+      SERVER_PORT: 8080
+    ports:
+      # Publicado para soporte técnico. El frontend consume el backend por proxy (/api).
+      - "${BACKEND_PORT:-8080}:8080"
+    networks:
+      - tienda_net
+
+  # ----------------------------------------------------------
+  # Frontend Angular servido con Nginx (entrada principal)
+  # ----------------------------------------------------------
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: tienda_frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "${FRONTEND_PORT:-80}:80"
+    networks:
+      - tienda_net
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  tienda_net:
+    driver: bridge

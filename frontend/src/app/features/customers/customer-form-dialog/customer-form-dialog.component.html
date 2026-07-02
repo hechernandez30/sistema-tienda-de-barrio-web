@@ -1,0 +1,180 @@
+<div class="flex max-h-[85vh] w-full flex-col">
+  <!-- Header -->
+  <div class="flex items-center justify-between border-b border-slate-200 px-6 py-4">
+    <div class="flex items-center gap-3">
+      <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-100 text-blue-600">
+        <span class="material-icons !text-[22px]">person</span>
+      </div>
+      <h2 class="text-base font-semibold text-slate-800">{{ title() }}</h2>
+    </div>
+    <button
+      type="button"
+      (click)="cancel()"
+      class="rounded-lg p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
+      aria-label="Cerrar"
+    >
+      <span class="material-icons">close</span>
+    </button>
+  </div>
+
+  <!-- ===================== MODO DETALLE ===================== -->
+  @if (isView && customer) {
+    <div class="min-h-0 flex-1 overflow-y-auto px-6 py-5">
+      <div class="mb-5 flex items-center gap-3">
+        <h3 class="text-lg font-semibold text-slate-800">{{ customer.fullName }}</h3>
+        @if (customer.active) {
+          <span class="inline-flex rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-medium text-emerald-700">Activo</span>
+        } @else {
+          <span class="inline-flex rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-500">Inactivo</span>
+        }
+      </div>
+
+      <dl class="grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2">
+        <div>
+          <dt class="text-xs font-medium uppercase tracking-wide text-slate-400">NIT</dt>
+          <dd class="mt-1 text-sm text-slate-700">{{ customer.nit || 'Consumidor final' }}</dd>
+        </div>
+        <div>
+          <dt class="text-xs font-medium uppercase tracking-wide text-slate-400">Teléfono</dt>
+          <dd class="mt-1 text-sm text-slate-700">{{ customer.phone || 'No registrado' }}</dd>
+        </div>
+        <div>
+          <dt class="text-xs font-medium uppercase tracking-wide text-slate-400">Email</dt>
+          <dd class="mt-1 text-sm text-slate-700">{{ customer.email || 'No registrado' }}</dd>
+        </div>
+        <div>
+          <dt class="text-xs font-medium uppercase tracking-wide text-slate-400">Estado</dt>
+          <dd class="mt-1 text-sm text-slate-700">{{ customer.active ? 'Activo' : 'Inactivo' }}</dd>
+        </div>
+        <div class="sm:col-span-2">
+          <dt class="text-xs font-medium uppercase tracking-wide text-slate-400">Dirección</dt>
+          <dd class="mt-1 text-sm text-slate-700">{{ customer.address || 'No registrada' }}</dd>
+        </div>
+        <div>
+          <dt class="text-xs font-medium uppercase tracking-wide text-slate-400">Creado</dt>
+          <dd class="mt-1 text-sm text-slate-700">{{ customer.createdAt ? (customer.createdAt | date: 'dd/MM/yyyy HH:mm') : '—' }}</dd>
+        </div>
+        <div>
+          <dt class="text-xs font-medium uppercase tracking-wide text-slate-400">Actualizado</dt>
+          <dd class="mt-1 text-sm text-slate-700">{{ customer.updatedAt ? (customer.updatedAt | date: 'dd/MM/yyyy HH:mm') : '—' }}</dd>
+        </div>
+      </dl>
+    </div>
+
+    <div class="flex justify-end gap-3 border-t border-slate-200 px-6 py-4">
+      <button
+        type="button"
+        (click)="cancel()"
+        class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-100"
+      >
+        Cerrar
+      </button>
+    </div>
+  } @else {
+    <!-- ===================== MODO FORMULARIO ===================== -->
+    <form [formGroup]="form" (ngSubmit)="save()" class="flex min-h-0 flex-1 flex-col">
+      <div class="grid grid-cols-1 gap-4 overflow-y-auto px-6 py-5 sm:grid-cols-2">
+        <!-- Nombre completo -->
+        <div class="sm:col-span-2">
+          <label class="mb-1.5 block text-sm font-medium text-slate-700">Nombre completo *</label>
+          <input
+            type="text"
+            formControlName="fullName"
+            placeholder="Nombre del cliente"
+            class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500"
+            [class.border-red-400]="form.controls.fullName.touched && form.controls.fullName.invalid"
+          />
+          @if (form.controls.fullName.touched && form.controls.fullName.hasError('required')) {
+            <p class="mt-1 text-xs text-red-600">El nombre completo es obligatorio</p>
+          }
+        </div>
+
+        <!-- NIT -->
+        <div>
+          <label class="mb-1.5 block text-sm font-medium text-slate-700">NIT</label>
+          <input
+            type="text"
+            formControlName="nit"
+            placeholder="Opcional (consumidor final)"
+            class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
+
+        <!-- Teléfono -->
+        <div>
+          <label class="mb-1.5 block text-sm font-medium text-slate-700">Teléfono</label>
+          <input
+            type="text"
+            inputmode="numeric"
+            maxlength="8"
+            formControlName="phone"
+            (input)="onPhoneInput($event)"
+            placeholder="Opcional (8 dígitos)"
+            class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500"
+            [class.border-red-400]="form.controls.phone.touched && form.controls.phone.invalid"
+          />
+          @if (form.controls.phone.touched && form.controls.phone.hasError('pattern')) {
+            <p class="mt-1 text-xs text-red-600">El teléfono debe tener 8 dígitos</p>
+          }
+        </div>
+
+        <!-- Email -->
+        <div>
+          <label class="mb-1.5 block text-sm font-medium text-slate-700">Email</label>
+          <input
+            type="email"
+            formControlName="email"
+            placeholder="Opcional"
+            class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500"
+            [class.border-red-400]="form.controls.email.touched && form.controls.email.invalid"
+          />
+          @if (form.controls.email.touched && form.controls.email.hasError('email')) {
+            <p class="mt-1 text-xs text-red-600">El correo no tiene un formato válido</p>
+          }
+        </div>
+
+        <!-- Dirección -->
+        <div class="sm:col-span-2">
+          <label class="mb-1.5 block text-sm font-medium text-slate-700">Dirección</label>
+          <textarea
+            formControlName="address"
+            rows="2"
+            placeholder="Opcional"
+            class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500"
+          ></textarea>
+        </div>
+
+        <!-- Activo -->
+        <div class="sm:col-span-2">
+          <label class="flex cursor-pointer items-center gap-3">
+            <input type="checkbox" formControlName="isActive" class="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500" />
+            <span class="text-sm font-medium text-slate-700">Cliente activo</span>
+          </label>
+        </div>
+      </div>
+
+      <!-- Footer -->
+      <div class="flex justify-end gap-3 border-t border-slate-200 px-6 py-4">
+        <button
+          type="button"
+          (click)="cancel()"
+          class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-100"
+        >
+          Cancelar
+        </button>
+        <button
+          type="submit"
+          [disabled]="saving()"
+          class="flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 py-2 text-sm font-medium text-white transition hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-70"
+        >
+          @if (saving()) {
+            <span class="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white"></span>
+            <span>Guardando...</span>
+          } @else {
+            <span>Guardar</span>
+          }
+        </button>
+      </div>
+    </form>
+  }
+</div>

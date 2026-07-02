@@ -1,0 +1,14 @@
+# ============================================================
+# Git ignore raíz del proyecto
+# ============================================================
+
+# Variables de entorno reales (nunca versionar)
+.env
+
+# Respaldos de base de datos generados localmente
+docker/backups/*.sql
+docker/backups/*.dump
+
+# Sistema operativo / editores
+.DS_Store
+Thumbs.db

@@ -1,0 +1,439 @@
+<div class="space-y-6">
+  <!-- Header -->
+  <div class="flex items-center gap-3">
+    <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-lg shadow-blue-500/30">
+      <span class="material-icons">bar_chart</span>
+    </div>
+    <div>
+      <h1 class="text-xl font-bold text-slate-800">Reportes</h1>
+      <p class="text-sm text-slate-500">Analiza ventas, caja, inventario, compras y utilidad estimada</p>
+    </div>
+  </div>
+
+  <!-- Filtros -->
+  <form [formGroup]="filterForm" (ngSubmit)="applyFilters()" class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+    <div class="flex flex-wrap items-end gap-4">
+      <div>
+        <label class="mb-1 block text-xs font-medium text-slate-500">Fecha desde</label>
+        <input
+          type="date"
+          formControlName="from"
+          class="rounded-xl border border-slate-300 bg-slate-50 px-3 py-2 text-sm text-slate-800 outline-none transition focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-500/20"
+        />
+      </div>
+      <div>
+        <label class="mb-1 block text-xs font-medium text-slate-500">Fecha hasta</label>
+        <input
+          type="date"
+          formControlName="to"
+          class="rounded-xl border border-slate-300 bg-slate-50 px-3 py-2 text-sm text-slate-800 outline-none transition focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-500/20"
+        />
+      </div>
+      <button
+        type="submit"
+        [disabled]="loading()"
+        class="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+      >
+        <span class="material-icons !text-[18px]">filter_alt</span>
+        Aplicar filtros
+      </button>
+      <button
+        type="button"
+        (click)="setToday()"
+        [disabled]="loading()"
+        class="inline-flex items-center gap-1.5 rounded-xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-100 disabled:opacity-60"
+      >
+        Hoy
+      </button>
+      <button
+        type="button"
+        (click)="setThisMonth()"
+        [disabled]="loading()"
+        class="inline-flex items-center gap-1.5 rounded-xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-100 disabled:opacity-60"
+      >
+        Este mes
+      </button>
+    </div>
+  </form>
+
+  @if (loading()) {
+    <div class="flex flex-col items-center justify-center gap-3 py-24 text-slate-400">
+      <span class="h-9 w-9 animate-spin rounded-full border-2 border-slate-200 border-t-blue-600"></span>
+      <p class="text-sm">Cargando reportes...</p>
+    </div>
+  } @else if (errored()) {
+    <div class="flex flex-col items-center justify-center gap-4 rounded-2xl border border-rose-200 bg-rose-50 py-16 text-center">
+      <span class="material-icons !text-[42px] text-rose-400">error_outline</span>
+      <p class="text-sm text-rose-700">Ocurrió un error al cargar los reportes.</p>
+      <button type="button" (click)="loadAll()" class="inline-flex items-center gap-2 rounded-xl bg-rose-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-rose-700">
+        <span class="material-icons !text-[18px]">refresh</span>
+        Reintentar
+      </button>
+    </div>
+  } @else {
+    <!-- Tarjetas principales -->
+    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+      <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <div class="flex items-center justify-between">
+          <p class="text-sm font-medium text-slate-500">Ventas totales</p>
+          <span class="material-icons text-blue-500">payments</span>
+        </div>
+        <p class="mt-2 text-2xl font-bold text-slate-800">Q {{ salesSummary()?.totalSales ?? 0 | number: '1.2-2' }}</p>
+      </div>
+
+      <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <div class="flex items-center justify-between">
+          <p class="text-sm font-medium text-slate-500">Cantidad de ventas</p>
+          <span class="material-icons text-indigo-500">receipt_long</span>
+        </div>
+        <p class="mt-2 text-2xl font-bold text-slate-800">{{ salesSummary()?.salesCount ?? 0 | number }}</p>
+        <p class="mt-1 text-xs text-slate-400">{{ salesSummary()?.cancelledSalesCount ?? 0 }} cancelada(s)</p>
+      </div>
+
+      <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <div class="flex items-center justify-between">
+          <p class="text-sm font-medium text-slate-500">Ticket promedio</p>
+          <span class="material-icons text-emerald-500">trending_up</span>
+        </div>
+        <p class="mt-2 text-2xl font-bold text-slate-800">Q {{ salesSummary()?.averageSaleAmount ?? 0 | number: '1.2-2' }}</p>
+      </div>
+
+      <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <div class="flex items-center justify-between">
+          <p class="text-sm font-medium text-slate-500">Utilidad estimada</p>
+          <span class="material-icons text-teal-500">savings</span>
+        </div>
+        <p class="mt-2 text-2xl font-bold text-slate-800">Q {{ estimatedProfit()?.estimatedGrossProfit ?? 0 | number: '1.2-2' }}</p>
+        <p class="mt-1 text-xs text-slate-400">Utilidad estimada según costo actual de productos.</p>
+      </div>
+
+      <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <div class="flex items-center justify-between">
+          <p class="text-sm font-medium text-slate-500">Ingresos netos de caja</p>
+          <span class="material-icons text-cyan-500">account_balance_wallet</span>
+        </div>
+        <p class="mt-2 text-2xl font-bold text-slate-800">Q {{ cashSummary()?.netAmount ?? 0 | number: '1.2-2' }}</p>
+      </div>
+
+      <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <div class="flex items-center justify-between">
+          <p class="text-sm font-medium text-slate-500">Productos con stock bajo</p>
+          <span class="material-icons text-amber-500">warning</span>
+        </div>
+        <p class="mt-2 text-2xl font-bold text-slate-800">{{ inventorySummary()?.lowStockProducts ?? 0 | number }}</p>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
+      <!-- Ventas por método de pago -->
+      <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <h2 class="mb-4 flex items-center gap-2 text-sm font-semibold text-slate-800">
+          <span class="material-icons !text-[20px] text-blue-500">donut_small</span>
+          Ventas por método de pago
+        </h2>
+        @if (salesByPayment().length === 0) {
+          <p class="py-8 text-center text-sm text-slate-400">Sin ventas en el rango seleccionado.</p>
+        } @else {
+          <div class="space-y-3">
+            @for (row of salesByPayment(); track row.paymentMethod) {
+              <div>
+                <div class="mb-1 flex items-center justify-between text-sm">
+                  <span class="font-medium text-slate-700">{{ paymentLabel(row.paymentMethod) }}</span>
+                  <span class="text-slate-500">{{ row.salesCount }} venta(s) · Q {{ row.totalAmount | number: '1.2-2' }}</span>
+                </div>
+                <div class="h-2.5 w-full overflow-hidden rounded-full bg-slate-100">
+                  <div class="h-full rounded-full bg-blue-500 transition-all" [style.width.%]="percent(row.totalAmount, maxPaymentAmount())"></div>
+                </div>
+              </div>
+            }
+          </div>
+        }
+      </section>
+
+      <!-- Ventas diarias -->
+      <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <h2 class="mb-4 flex items-center gap-2 text-sm font-semibold text-slate-800">
+          <span class="material-icons !text-[20px] text-blue-500">calendar_month</span>
+          Ventas diarias
+        </h2>
+        @if (dailySales().length === 0) {
+          <p class="py-8 text-center text-sm text-slate-400">Sin ventas en el rango seleccionado.</p>
+        } @else {
+          <div class="max-h-72 space-y-3 overflow-y-auto pr-1">
+            @for (day of dailySales(); track day.date) {
+              <div>
+                <div class="mb-1 flex items-center justify-between text-sm">
+                  <span class="font-medium text-slate-700">{{ day.date | date: 'dd/MM/yyyy' }}</span>
+                  <span class="text-slate-500">{{ day.salesCount }} venta(s) · Q {{ day.totalAmount | number: '1.2-2' }}</span>
+                </div>
+                <div class="h-2.5 w-full overflow-hidden rounded-full bg-slate-100">
+                  <div class="h-full rounded-full bg-indigo-500 transition-all" [style.width.%]="percent(day.totalAmount, maxDailyAmount())"></div>
+                </div>
+              </div>
+            }
+          </div>
+        }
+      </section>
+    </div>
+
+    <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
+      <!-- Productos más vendidos -->
+      <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <h2 class="mb-4 flex items-center gap-2 text-sm font-semibold text-slate-800">
+          <span class="material-icons !text-[20px] text-blue-500">emoji_events</span>
+          Productos más vendidos
+        </h2>
+        @if (topProducts().length === 0) {
+          <p class="py-8 text-center text-sm text-slate-400">No hay productos vendidos en este rango.</p>
+        } @else {
+          <ol class="space-y-2">
+            @for (product of topProducts(); track product.productId; let i = $index) {
+              <li class="flex items-center gap-3 rounded-xl border border-slate-100 px-3 py-2">
+                <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-blue-100 text-xs font-bold text-blue-700">{{ i + 1 }}</span>
+                <div class="min-w-0 flex-1">
+                  <p class="truncate text-sm font-medium text-slate-800">{{ product.productName }}</p>
+                  <p class="font-mono text-xs text-slate-500">{{ product.barcode || '—' }}</p>
+                </div>
+                <div class="text-right">
+                  <p class="text-sm font-semibold text-slate-800">{{ product.quantitySold | number: '1.0-3' }} u.</p>
+                  <p class="text-xs text-slate-500">Q {{ product.totalAmount | number: '1.2-2' }}</p>
+                </div>
+              </li>
+            }
+          </ol>
+        }
+      </section>
+
+      <!-- Stock bajo -->
+      <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <h2 class="mb-4 flex items-center gap-2 text-sm font-semibold text-slate-800">
+          <span class="material-icons !text-[20px] text-amber-500">inventory_2</span>
+          Stock bajo
+        </h2>
+        @if (lowStock().length === 0) {
+          <p class="py-8 text-center text-sm text-slate-400">No hay productos con stock bajo.</p>
+        } @else {
+          <div class="max-h-72 overflow-y-auto">
+            <table class="min-w-full divide-y divide-slate-200 text-sm">
+              <thead class="text-left text-xs font-medium uppercase tracking-wide text-slate-500">
+                <tr>
+                  <th class="py-2 pr-2">Producto</th>
+                  <th class="py-2 px-2">Categoría</th>
+                  <th class="py-2 px-2 text-right">Actual</th>
+                  <th class="py-2 px-2 text-right">Mín.</th>
+                  <th class="py-2 pl-2 text-right">Dif.</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-100">
+                @for (item of lowStock(); track item.productId) {
+                  <tr [class.bg-rose-50]="stockDiff(item) < 0">
+                    <td class="py-2 pr-2">
+                      <p class="font-medium text-slate-800">{{ item.productName }}</p>
+                      <p class="font-mono text-xs text-slate-500">{{ item.barcode || '—' }}</p>
+                    </td>
+                    <td class="py-2 px-2 text-slate-600">{{ item.categoryName || '—' }}</td>
+                    <td class="py-2 px-2 text-right text-slate-700">{{ item.currentStock | number: '1.0-3' }}</td>
+                    <td class="py-2 px-2 text-right text-slate-700">{{ item.minStock | number: '1.0-3' }}</td>
+                    <td class="py-2 pl-2 text-right font-medium" [class]="stockDiff(item) < 0 ? 'text-rose-600' : 'text-amber-600'">
+                      {{ stockDiff(item) | number: '1.0-3' }}
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+      </section>
+    </div>
+
+    <!-- Resumen de inventario -->
+    <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+      <h2 class="mb-4 flex items-center gap-2 text-sm font-semibold text-slate-800">
+        <span class="material-icons !text-[20px] text-blue-500">warehouse</span>
+        Resumen de inventario
+      </h2>
+      @if (inventorySummary(); as inv) {
+        <div class="grid grid-cols-2 gap-4 lg:grid-cols-5">
+          <div class="rounded-xl bg-slate-50 p-4">
+            <p class="text-xs font-medium text-slate-500">Total productos</p>
+            <p class="mt-1 text-xl font-bold text-slate-800">{{ inv.totalProducts | number }}</p>
+          </div>
+          <div class="rounded-xl bg-slate-50 p-4">
+            <p class="text-xs font-medium text-slate-500">Productos activos</p>
+            <p class="mt-1 text-xl font-bold text-slate-800">{{ inv.activeProducts | number }}</p>
+          </div>
+          <div class="rounded-xl bg-slate-50 p-4">
+            <p class="text-xs font-medium text-slate-500">Con stock bajo</p>
+            <p class="mt-1 text-xl font-bold text-amber-600">{{ inv.lowStockProducts | number }}</p>
+          </div>
+          <div class="rounded-xl bg-slate-50 p-4">
+            <p class="text-xs font-medium text-slate-500">Costo total inventario</p>
+            <p class="mt-1 text-xl font-bold text-slate-800">Q {{ inv.totalInventoryCost | number: '1.2-2' }}</p>
+          </div>
+          <div class="rounded-xl bg-slate-50 p-4">
+            <p class="text-xs font-medium text-slate-500">Valor venta inventario</p>
+            <p class="mt-1 text-xl font-bold text-slate-800">Q {{ inv.totalInventorySaleValue | number: '1.2-2' }}</p>
+          </div>
+        </div>
+      }
+    </section>
+
+    <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
+      <!-- Resumen de compras -->
+      <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <h2 class="mb-4 flex items-center gap-2 text-sm font-semibold text-slate-800">
+          <span class="material-icons !text-[20px] text-blue-500">shopping_cart</span>
+          Resumen de compras
+        </h2>
+        @if (purchasesSummary(); as pur) {
+          <div class="grid grid-cols-2 gap-4">
+            <div class="rounded-xl bg-slate-50 p-4">
+              <p class="text-xs font-medium text-slate-500">Compras</p>
+              <p class="mt-1 text-xl font-bold text-slate-800">{{ pur.purchaseCount | number }}</p>
+            </div>
+            <div class="rounded-xl bg-slate-50 p-4">
+              <p class="text-xs font-medium text-slate-500">Monto comprado</p>
+              <p class="mt-1 text-xl font-bold text-slate-800">Q {{ pur.totalPurchasedAmount | number: '1.2-2' }}</p>
+            </div>
+            <div class="rounded-xl bg-slate-50 p-4">
+              <p class="text-xs font-medium text-slate-500">Confirmadas</p>
+              <p class="mt-1 text-xl font-bold text-emerald-600">{{ pur.confirmedPurchaseCount | number }}</p>
+            </div>
+            <div class="rounded-xl bg-slate-50 p-4">
+              <p class="text-xs font-medium text-slate-500">Canceladas</p>
+              <p class="mt-1 text-xl font-bold text-rose-600">{{ pur.cancelledPurchaseCount | number }}</p>
+            </div>
+          </div>
+        }
+      </section>
+
+      <!-- Compras por proveedor -->
+      <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <h2 class="mb-4 flex items-center gap-2 text-sm font-semibold text-slate-800">
+          <span class="material-icons !text-[20px] text-blue-500">local_shipping</span>
+          Compras por proveedor
+        </h2>
+        @if (purchasesBySupplier().length === 0) {
+          <p class="py-8 text-center text-sm text-slate-400">Sin compras en el rango seleccionado.</p>
+        } @else {
+          <div class="space-y-3">
+            @for (supplier of purchasesBySupplier(); track supplier.supplierId) {
+              <div>
+                <div class="mb-1 flex items-center justify-between text-sm">
+                  <span class="font-medium text-slate-700">{{ supplier.supplierName }}</span>
+                  <span class="text-slate-500">{{ supplier.purchaseCount }} compra(s) · Q {{ supplier.totalAmount | number: '1.2-2' }}</span>
+                </div>
+                <div class="h-2.5 w-full overflow-hidden rounded-full bg-slate-100">
+                  <div class="h-full rounded-full bg-teal-500 transition-all" [style.width.%]="percent(supplier.totalAmount, maxSupplierAmount())"></div>
+                </div>
+              </div>
+            }
+          </div>
+        }
+      </section>
+    </div>
+
+    <!-- Resumen de caja -->
+    <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+      <h2 class="mb-4 flex items-center gap-2 text-sm font-semibold text-slate-800">
+        <span class="material-icons !text-[20px] text-blue-500">account_balance_wallet</span>
+        Resumen de caja
+      </h2>
+      @if (cashSummary(); as cash) {
+        <div class="grid grid-cols-2 gap-4 lg:grid-cols-3 xl:grid-cols-6">
+          <div class="rounded-xl bg-slate-50 p-4">
+            <p class="text-xs font-medium text-slate-500">Ingresos efectivo</p>
+            <p class="mt-1 text-lg font-bold text-slate-800">Q {{ cash.totalCashIncome | number: '1.2-2' }}</p>
+          </div>
+          <div class="rounded-xl bg-slate-50 p-4">
+            <p class="text-xs font-medium text-slate-500">Ingresos transferencia</p>
+            <p class="mt-1 text-lg font-bold text-slate-800">Q {{ cash.totalTransferIncome | number: '1.2-2' }}</p>
+          </div>
+          <div class="rounded-xl bg-slate-50 p-4">
+            <p class="text-xs font-medium text-slate-500">Ingresos tarjeta</p>
+            <p class="mt-1 text-lg font-bold text-slate-800">Q {{ cash.totalCardIncome | number: '1.2-2' }}</p>
+          </div>
+          <div class="rounded-xl bg-emerald-50 p-4">
+            <p class="text-xs font-medium text-emerald-600">Total ingresos</p>
+            <p class="mt-1 text-lg font-bold text-emerald-700">Q {{ cash.totalIncome | number: '1.2-2' }}</p>
+          </div>
+          <div class="rounded-xl bg-rose-50 p-4">
+            <p class="text-xs font-medium text-rose-600">Total egresos</p>
+            <p class="mt-1 text-lg font-bold text-rose-700">Q {{ cash.totalExpenses | number: '1.2-2' }}</p>
+          </div>
+          <div class="rounded-xl bg-blue-50 p-4">
+            <p class="text-xs font-medium text-blue-600">Neto</p>
+            <p class="mt-1 text-lg font-bold text-blue-700">Q {{ cash.netAmount | number: '1.2-2' }}</p>
+          </div>
+        </div>
+      }
+    </section>
+
+    <!-- Caja por categoría -->
+    <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+      <h2 class="mb-4 flex items-center gap-2 text-sm font-semibold text-slate-800">
+        <span class="material-icons !text-[20px] text-blue-500">category</span>
+        Ingresos y egresos por categoría
+      </h2>
+      @if (cashByCategory().length === 0) {
+        <p class="py-8 text-center text-sm text-slate-400">Sin movimientos de caja en el rango seleccionado.</p>
+      } @else {
+        <div class="overflow-x-auto">
+          <table class="min-w-full divide-y divide-slate-200 text-sm">
+            <thead class="text-left text-xs font-medium uppercase tracking-wide text-slate-500">
+              <tr>
+                <th class="py-2 pr-2">Tipo</th>
+                <th class="py-2 px-2">Categoría</th>
+                <th class="py-2 px-2">Método de pago</th>
+                <th class="py-2 px-2 text-right">Movimientos</th>
+                <th class="py-2 pl-2 text-right">Total</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100">
+              @for (row of cashByCategory(); track $index) {
+                <tr>
+                  <td class="py-2 pr-2">
+                    @if (row.movementType === 'INCOME') {
+                      <span class="inline-flex rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-medium text-emerald-700">{{ movementLabels[row.movementType] }}</span>
+                    } @else {
+                      <span class="inline-flex rounded-full bg-rose-100 px-2.5 py-0.5 text-xs font-medium text-rose-700">{{ movementLabels[row.movementType] }}</span>
+                    }
+                  </td>
+                  <td class="py-2 px-2 text-slate-700">{{ row.category }}</td>
+                  <td class="py-2 px-2 text-slate-600">{{ paymentLabel(row.paymentMethod) }}</td>
+                  <td class="py-2 px-2 text-right text-slate-700">{{ row.movementCount | number }}</td>
+                  <td class="py-2 pl-2 text-right font-medium text-slate-800">Q {{ row.totalAmount | number: '1.2-2' }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    </section>
+
+    <!-- Utilidad estimada -->
+    <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+      <h2 class="mb-4 flex items-center gap-2 text-sm font-semibold text-slate-800">
+        <span class="material-icons !text-[20px] text-teal-500">savings</span>
+        Utilidad estimada
+      </h2>
+      @if (estimatedProfit(); as profit) {
+        <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <div class="rounded-xl bg-slate-50 p-4">
+            <p class="text-xs font-medium text-slate-500">Ventas totales</p>
+            <p class="mt-1 text-xl font-bold text-slate-800">Q {{ profit.totalSales | number: '1.2-2' }}</p>
+          </div>
+          <div class="rounded-xl bg-slate-50 p-4">
+            <p class="text-xs font-medium text-slate-500">Costo estimado</p>
+            <p class="mt-1 text-xl font-bold text-slate-800">Q {{ profit.estimatedCost | number: '1.2-2' }}</p>
+          </div>
+          <div class="rounded-xl bg-teal-50 p-4">
+            <p class="text-xs font-medium text-teal-600">Utilidad bruta estimada</p>
+            <p class="mt-1 text-xl font-bold text-teal-700">Q {{ profit.estimatedGrossProfit | number: '1.2-2' }}</p>
+          </div>
+        </div>
+        <p class="mt-3 text-xs text-slate-400">La utilidad es estimada porque se calcula con el costo actual de los productos.</p>
+      }
+    </section>
+  }
+</div>

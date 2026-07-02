@@ -1,0 +1,145 @@
+<section>
+  <!-- Header del módulo -->
+  <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+    <div>
+      <h1 class="text-2xl font-semibold text-slate-800">Compras</h1>
+      <p class="mt-1 text-sm text-slate-500">Registra compras a proveedores y controla el ingreso de mercadería</p>
+    </div>
+    <button
+      type="button"
+      (click)="openCreate()"
+      class="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+    >
+      <span class="material-icons !text-[20px]">add</span>
+      Nueva compra
+    </button>
+  </div>
+
+  <!-- Tarjetas de resumen -->
+  <div class="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
+    <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+      <p class="text-xs font-medium uppercase tracking-wide text-slate-400">Total compras</p>
+      <p class="mt-1 text-2xl font-semibold text-slate-800">{{ stats().total }}</p>
+    </div>
+    <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+      <p class="text-xs font-medium uppercase tracking-wide text-slate-400">Confirmadas</p>
+      <p class="mt-1 text-2xl font-semibold text-emerald-600">{{ stats().confirmed }}</p>
+    </div>
+    <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+      <p class="text-xs font-medium uppercase tracking-wide text-slate-400">En borrador</p>
+      <p class="mt-1 text-2xl font-semibold text-amber-600">{{ stats().draft }}</p>
+    </div>
+    <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+      <p class="text-xs font-medium uppercase tracking-wide text-slate-400">Monto comprado</p>
+      <p class="mt-1 text-2xl font-semibold text-blue-600">Q {{ stats().amount | number: '1.2-2' }}</p>
+    </div>
+  </div>
+
+  <!-- Barra de búsqueda -->
+  <div class="mb-4">
+    <div class="relative max-w-md">
+      <span class="material-icons pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 !text-[20px] text-slate-400">search</span>
+      <input
+        type="text"
+        [formControl]="searchControl"
+        placeholder="Buscar por proveedor, número o estado"
+        class="w-full rounded-xl border border-slate-300 bg-white py-2.5 pl-10 pr-4 text-sm text-slate-900 placeholder:text-slate-400 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500"
+      />
+    </div>
+  </div>
+
+  <!-- Contenedor de tabla -->
+  <div class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+    @if (loading()) {
+      <div class="flex flex-col items-center justify-center gap-3 py-16 text-slate-400">
+        <span class="h-8 w-8 animate-spin rounded-full border-2 border-slate-200 border-t-blue-600"></span>
+        <p class="text-sm">Cargando compras...</p>
+      </div>
+    } @else if (filtered().length === 0) {
+      <div class="flex flex-col items-center justify-center gap-2 py-16 text-center">
+        <span class="material-icons !text-[40px] text-slate-300">shopping_cart</span>
+        @if (purchases().length === 0) {
+          <p class="text-sm font-medium text-slate-600">Aún no hay compras registradas</p>
+          <button type="button" (click)="openCreate()" class="mt-2 text-sm font-medium text-blue-600 hover:text-blue-700">
+            Registrar la primera compra
+          </button>
+        } @else {
+          <p class="text-sm font-medium text-slate-600">Sin resultados para tu búsqueda</p>
+          <p class="text-xs text-slate-400">Intenta con otro proveedor, número o estado</p>
+        }
+      </div>
+    } @else {
+      <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-slate-200 text-sm">
+          <thead class="bg-slate-50 text-left text-xs font-medium uppercase tracking-wide text-slate-500">
+            <tr>
+              <th class="px-4 py-3">No.</th>
+              <th class="px-4 py-3">Proveedor</th>
+              <th class="px-4 py-3">Fecha</th>
+              <th class="px-4 py-3 text-center">Estado</th>
+              <th class="px-4 py-3 text-center">Pagada</th>
+              <th class="px-4 py-3 text-right">Total</th>
+              <th class="px-4 py-3 text-right">Acciones</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-100">
+            @for (purchase of filtered(); track purchase.id) {
+              <tr class="transition-colors hover:bg-slate-50">
+                <td class="whitespace-nowrap px-4 py-3 font-mono text-xs text-slate-600">
+                  {{ purchase.purchaseNumber ? '#' + purchase.purchaseNumber : '—' }}
+                </td>
+                <td class="px-4 py-3 font-medium text-slate-800">{{ purchase.supplierName || '—' }}</td>
+                <td class="whitespace-nowrap px-4 py-3 text-slate-500">{{ purchase.purchaseDate | date: 'dd/MM/yyyy HH:mm' }}</td>
+                <td class="whitespace-nowrap px-4 py-3 text-center">
+                  <span class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium" [class]="statusBadgeClass(purchase.status)">
+                    {{ statusLabels[purchase.status] }}
+                  </span>
+                </td>
+                <td class="whitespace-nowrap px-4 py-3 text-center">
+                  @if (purchase.paid) {
+                    <span class="inline-flex rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-medium text-emerald-700">Sí</span>
+                  } @else {
+                    <span class="inline-flex rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-500">No</span>
+                  }
+                </td>
+                <td class="whitespace-nowrap px-4 py-3 text-right font-medium text-slate-800">Q {{ purchase.total | number: '1.2-2' }}</td>
+                <td class="whitespace-nowrap px-4 py-3 text-right">
+                  <div class="flex items-center justify-end gap-1">
+                    <button
+                      type="button"
+                      (click)="openDetail(purchase)"
+                      class="rounded-lg p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
+                      title="Ver detalle"
+                    >
+                      <span class="material-icons !text-[20px]">visibility</span>
+                    </button>
+                    @if (purchase.status === 'DRAFT') {
+                      <button
+                        type="button"
+                        (click)="confirmPurchase(purchase)"
+                        class="rounded-lg p-1.5 text-slate-400 transition hover:bg-emerald-50 hover:text-emerald-600"
+                        title="Confirmar"
+                      >
+                        <span class="material-icons !text-[20px]">check_circle</span>
+                      </button>
+                    }
+                    @if (purchase.status !== 'CANCELLED') {
+                      <button
+                        type="button"
+                        (click)="cancelPurchase(purchase)"
+                        class="rounded-lg p-1.5 text-slate-400 transition hover:bg-red-50 hover:text-red-600"
+                        title="Cancelar"
+                      >
+                        <span class="material-icons !text-[20px]">cancel</span>
+                      </button>
+                    }
+                  </div>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </div>
+</section>

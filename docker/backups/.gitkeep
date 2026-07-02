@@ -1,0 +1,2 @@
+# Carpeta para respaldos de la base de datos generados por scripts/backup-db.sh
+# Los archivos .sql y .dump de esta carpeta están ignorados por Git.

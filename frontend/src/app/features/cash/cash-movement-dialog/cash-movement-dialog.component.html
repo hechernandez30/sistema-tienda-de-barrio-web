@@ -1,0 +1,107 @@
+<div class="flex max-h-[85vh] w-full flex-col">
+  <div class="flex items-center justify-between border-b border-slate-200 px-6 py-4">
+    <div class="flex items-center gap-3">
+      <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-100 text-blue-600">
+        <span class="material-icons !text-[22px]">swap_vert</span>
+      </div>
+      <h2 class="text-base font-semibold text-slate-800">Nuevo movimiento</h2>
+    </div>
+    <button type="button" (click)="cancel()" class="rounded-lg p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600" aria-label="Cerrar">
+      <span class="material-icons">close</span>
+    </button>
+  </div>
+
+  <form [formGroup]="form" (ngSubmit)="save()" class="flex min-h-0 flex-1 flex-col">
+    <div class="grid grid-cols-1 gap-4 overflow-y-auto px-6 py-5 sm:grid-cols-2">
+      <!-- Tipo -->
+      <div>
+        <label class="mb-1.5 block text-sm font-medium text-slate-700">Tipo de movimiento *</label>
+        <select
+          formControlName="movementType"
+          class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500"
+        >
+          <option value="INCOME">Ingreso</option>
+          <option value="EXPENSE">Egreso</option>
+        </select>
+      </div>
+
+      <!-- Categoría -->
+      <div>
+        <label class="mb-1.5 block text-sm font-medium text-slate-700">Categoría *</label>
+        <select
+          formControlName="category"
+          class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500"
+          [class.border-red-400]="form.controls.category.touched && form.controls.category.invalid"
+        >
+          <option value="">Selecciona una categoría</option>
+          @for (category of categories(); track category) {
+            <option [value]="category">{{ category }}</option>
+          }
+        </select>
+        @if (form.controls.category.touched && form.controls.category.hasError('required')) {
+          <p class="mt-1 text-xs text-red-600">La categoría es obligatoria</p>
+        }
+      </div>
+
+      <!-- Método de pago -->
+      <div>
+        <label class="mb-1.5 block text-sm font-medium text-slate-700">Método de pago *</label>
+        <select
+          formControlName="paymentMethod"
+          class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500"
+        >
+          @for (method of paymentMethods; track method.value) {
+            <option [value]="method.value">{{ method.label }}</option>
+          }
+        </select>
+      </div>
+
+      <!-- Monto -->
+      <div>
+        <label class="mb-1.5 block text-sm font-medium text-slate-700">Monto (Q) *</label>
+        <input
+          type="number"
+          step="0.01"
+          min="0"
+          formControlName="amount"
+          class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500"
+          [class.border-red-400]="form.controls.amount.touched && form.controls.amount.invalid"
+        />
+        @if (form.controls.amount.touched && form.controls.amount.hasError('required')) {
+          <p class="mt-1 text-xs text-red-600">El monto es obligatorio</p>
+        } @else if (form.controls.amount.touched && form.controls.amount.hasError('min')) {
+          <p class="mt-1 text-xs text-red-600">El monto debe ser mayor que 0</p>
+        }
+      </div>
+
+      <!-- Descripción -->
+      <div class="sm:col-span-2">
+        <label class="mb-1.5 block text-sm font-medium text-slate-700">Descripción</label>
+        <textarea
+          formControlName="description"
+          rows="2"
+          placeholder="Opcional"
+          class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500"
+        ></textarea>
+      </div>
+    </div>
+
+    <div class="flex justify-end gap-3 border-t border-slate-200 px-6 py-4">
+      <button type="button" (click)="cancel()" class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-100">
+        Cancelar
+      </button>
+      <button
+        type="submit"
+        [disabled]="saving()"
+        class="flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 py-2 text-sm font-medium text-white transition hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-70"
+      >
+        @if (saving()) {
+          <span class="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white"></span>
+          <span>Guardando...</span>
+        } @else {
+          <span>Registrar</span>
+        }
+      </button>
+    </div>
+  </form>
+</div>
