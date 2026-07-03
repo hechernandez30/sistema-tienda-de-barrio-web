@@ -140,9 +140,65 @@ Restaurar un respaldo:
 ./scripts/restore-db.sh docker/backups/NOMBRE_DEL_BACKUP.sql
 ```
 
+> El respaldo se genera con `pg_dump --clean --if-exists`, por lo que **se puede restaurar
+> sobre una base ya existente** (limpia lo anterior y carga el respaldo). No hace falta
+> vaciar la base manualmente antes de restaurar.
+
 > **Windows:** estos scripts están en Bash. Ejecutarlos desde **Git Bash** o **WSL**.
 > Si es necesario, dar permisos de ejecución en Linux/Mac:
 > `chmod +x scripts/backup-db.sh scripts/restore-db.sh`
+
+---
+
+## Migrar la base de datos a otra computadora
+
+Para llevar **tus datos actuales** (productos, ventas, caja, usuarios, etc.) desde esta PC
+a otra, se exporta un respaldo aquí y se restaura allá. Los datos viven en el volumen de
+Docker; el script de inicialización (`01-init.sql`) **solo** crea datos base en una base
+vacía, así que la forma correcta de mover información real es con backup/restore.
+
+### Paso 1 — En la PC de origen: exportar
+
+Con el sistema levantado:
+
+```bash
+./scripts/backup-db.sh
+```
+
+Esto crea el archivo en `docker/backups/`. Cópialo (USB, red, nube) a la PC destino.
+
+> Alternativa sin Git Bash (útil en Windows con PowerShell), genera el archivo dentro del
+> contenedor y lo extrae, evitando problemas de codificación:
+>
+> ```powershell
+> docker compose exec -T postgres pg_dump --clean --if-exists -U tienda_user -d tienda_barrio_db -f /tmp/backup.sql
+> docker compose cp postgres:/tmp/backup.sql ./backup.sql
+> ```
+
+### Paso 2 — En la PC de destino: preparar el proyecto
+
+```bash
+git clone <tu-repositorio>
+cd sistema-tienda-de-barrio-web
+cp .env.example .env
+docker compose up -d --build
+```
+
+### Paso 3 — En la PC de destino: restaurar tus datos
+
+Copia tu archivo de respaldo dentro del proyecto (por ejemplo en `docker/backups/`) y
+restaura:
+
+```bash
+./scripts/restore-db.sh docker/backups/NOMBRE_DEL_BACKUP.sql
+```
+
+Listo. La PC destino queda con **exactamente tus datos**. Como el respaldo incluye al
+usuario `admin` con su contraseña real, inicias sesión con **las mismas credenciales que
+usabas en la PC de origen**.
+
+> ⚠️ En la PC de **origen** no ejecutes `docker compose down -v`: eso borra el volumen y
+> perderías los datos que quieres migrar.
 
 ---
 
