@@ -93,6 +93,14 @@ export interface CashByCategoryReport {
   totalAmount: number;
 }
 
+export interface SalesByCategoryReport {
+  categoryId?: string | null;
+  categoryName: string;
+  quantitySold: number;
+  totalAmount: number;
+  lineCount: number;
+}
+
 export interface EstimatedProfitReport {
   fromDate?: string | null;
   toDate?: string | null;

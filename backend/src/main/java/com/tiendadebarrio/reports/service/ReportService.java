@@ -12,6 +12,7 @@ import com.tiendadebarrio.reports.dto.InventorySummaryResponse;
 import com.tiendadebarrio.reports.dto.LowStockResponse;
 import com.tiendadebarrio.reports.dto.PurchasesBySupplierResponse;
 import com.tiendadebarrio.reports.dto.PurchasesSummaryResponse;
+import com.tiendadebarrio.reports.dto.SalesByCategoryResponse;
 import com.tiendadebarrio.reports.dto.SalesByPaymentMethodResponse;
 import com.tiendadebarrio.reports.dto.SalesSummaryResponse;
 import com.tiendadebarrio.reports.dto.TopProductResponse;
@@ -97,6 +98,20 @@ public class ReportService {
         int effectiveLimit = normalizeLimit(limit);
         return reportRepository.topProducts(
                 SaleStatus.COMPLETED, range.start(), range.end(), PageRequest.of(0, effectiveLimit));
+    }
+
+    @Transactional(readOnly = true)
+    public List<SalesByCategoryResponse> salesByCategory(LocalDate from, LocalDate to) {
+        Range range = resolveRange(from, to);
+        return reportRepository.salesByCategory(SaleStatus.COMPLETED, range.start(), range.end())
+                .stream()
+                .map(row -> new SalesByCategoryResponse(
+                        row.getCategoryId(),
+                        row.getCategoryName(),
+                        row.getQuantitySold(),
+                        money(row.getTotalAmount()),
+                        row.getLineCount()))
+                .toList();
     }
 
     // ------------------------------------------------------------------

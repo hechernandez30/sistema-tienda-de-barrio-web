@@ -47,6 +47,14 @@
       </button>
       <button
         type="button"
+        (click)="setThisWeek()"
+        [disabled]="loading()"
+        class="inline-flex items-center gap-1.5 rounded-xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-100 disabled:opacity-60"
+      >
+        Esta semana
+      </button>
+      <button
+        type="button"
         (click)="setThisMonth()"
         [disabled]="loading()"
         class="inline-flex items-center gap-1.5 rounded-xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-100 disabled:opacity-60"
@@ -176,6 +184,58 @@
       </section>
     </div>
 
+    <!-- Ventas por categoría de producto -->
+    <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+      <h2 class="mb-1 flex items-center gap-2 text-sm font-semibold text-slate-800">
+        <span class="material-icons !text-[20px] text-violet-500">sell</span>
+        Ventas por categoría de producto
+      </h2>
+      <p class="mb-4 text-xs text-slate-400">
+        Ingresos por categoría (Snacks, Bebidas, etc.) en el rango de fechas seleccionado. Usa Hoy, Esta semana o Este mes para distintos períodos.
+      </p>
+      @if (salesByCategory().length === 0) {
+        <p class="py-8 text-center text-sm text-slate-400">Sin ventas por categoría en el rango seleccionado.</p>
+      } @else {
+        <div class="space-y-3">
+          @for (row of salesByCategory(); track row.categoryName) {
+            <div>
+              <div class="mb-1 flex items-center justify-between text-sm">
+                <span class="font-medium text-slate-700">{{ row.categoryName }}</span>
+                <span class="text-slate-500">
+                  {{ row.quantitySold | number: '1.0-3' }} u. · Q {{ row.totalAmount | number: '1.2-2' }}
+                </span>
+              </div>
+              <div class="h-2.5 w-full overflow-hidden rounded-full bg-slate-100">
+                <div class="h-full rounded-full bg-violet-500 transition-all" [style.width.%]="percent(row.totalAmount, maxCategoryAmount())"></div>
+              </div>
+            </div>
+          }
+        </div>
+        <div class="mt-4 overflow-x-auto">
+          <table class="min-w-full divide-y divide-slate-200 text-sm">
+            <thead class="text-left text-xs font-medium uppercase tracking-wide text-slate-500">
+              <tr>
+                <th class="py-2 pr-2">Categoría</th>
+                <th class="py-2 px-2 text-right">Unidades</th>
+                <th class="py-2 px-2 text-right">Líneas</th>
+                <th class="py-2 pl-2 text-right">Ingresos</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100">
+              @for (row of salesByCategory(); track row.categoryName) {
+                <tr>
+                  <td class="py-2 pr-2 font-medium text-slate-800">{{ row.categoryName }}</td>
+                  <td class="py-2 px-2 text-right text-slate-700">{{ row.quantitySold | number: '1.0-3' }}</td>
+                  <td class="py-2 px-2 text-right text-slate-700">{{ row.lineCount | number }}</td>
+                  <td class="py-2 pl-2 text-right font-semibold text-slate-800">Q {{ row.totalAmount | number: '1.2-2' }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    </section>
+
     <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
       <!-- Productos más vendidos -->
       <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -278,6 +338,81 @@
       }
     </section>
 
+    <!-- Lotes por vencer y vencidos -->
+    <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
+      <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <h2 class="mb-1 flex items-center gap-2 text-sm font-semibold text-slate-800">
+          <span class="material-icons !text-[20px] text-amber-500">schedule</span>
+          Lotes por vencer ({{ EXPIRING_DAYS }} días)
+        </h2>
+        <p class="mb-4 text-xs text-slate-400">Productos con control de vencimiento que caducan pronto. No depende del filtro de fechas.</p>
+        @if (expiringLots().length === 0) {
+          <p class="py-8 text-center text-sm text-slate-400">No hay lotes por vencer en los próximos {{ EXPIRING_DAYS }} días.</p>
+        } @else {
+          <div class="max-h-72 overflow-y-auto">
+            <table class="min-w-full divide-y divide-slate-200 text-sm">
+              <thead class="text-left text-xs font-medium uppercase tracking-wide text-slate-500">
+                <tr>
+                  <th class="py-2 pr-2">Producto</th>
+                  <th class="py-2 px-2">Vence</th>
+                  <th class="py-2 px-2 text-right">Cant.</th>
+                  <th class="py-2 pl-2 text-right">Días</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-100">
+                @for (lot of expiringLots(); track lot.id) {
+                  <tr class="bg-amber-50/50">
+                    <td class="py-2 pr-2">
+                      <p class="font-medium text-slate-800">{{ lot.productName }}</p>
+                      <p class="font-mono text-xs text-slate-500">{{ lot.lotCode || lot.barcode || '—' }}</p>
+                    </td>
+                    <td class="py-2 px-2 text-slate-700">{{ lot.expirationDate | date: 'dd/MM/yyyy' }}</td>
+                    <td class="py-2 px-2 text-right text-slate-700">{{ lot.quantity | number: '1.0-3' }}</td>
+                    <td class="py-2 pl-2 text-right font-medium text-amber-700">{{ lot.daysToExpire }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+      </section>
+
+      <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <h2 class="mb-1 flex items-center gap-2 text-sm font-semibold text-slate-800">
+          <span class="material-icons !text-[20px] text-rose-500">event_busy</span>
+          Lotes vencidos con stock
+        </h2>
+        <p class="mb-4 text-xs text-slate-400">Stock vencido aún en inventario. El POS no lo vende; conviene dar de baja.</p>
+        @if (expiredLots().length === 0) {
+          <p class="py-8 text-center text-sm text-slate-400">No hay lotes vencidos con stock.</p>
+        } @else {
+          <div class="max-h-72 overflow-y-auto">
+            <table class="min-w-full divide-y divide-slate-200 text-sm">
+              <thead class="text-left text-xs font-medium uppercase tracking-wide text-slate-500">
+                <tr>
+                  <th class="py-2 pr-2">Producto</th>
+                  <th class="py-2 px-2">Venció</th>
+                  <th class="py-2 pl-2 text-right">Cant.</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-100">
+                @for (lot of expiredLots(); track lot.id) {
+                  <tr class="bg-rose-50/50">
+                    <td class="py-2 pr-2">
+                      <p class="font-medium text-slate-800">{{ lot.productName }}</p>
+                      <p class="font-mono text-xs text-slate-500">{{ lot.lotCode || lot.barcode || '—' }}</p>
+                    </td>
+                    <td class="py-2 px-2 text-slate-700">{{ lot.expirationDate | date: 'dd/MM/yyyy' }}</td>
+                    <td class="py-2 pl-2 text-right font-medium text-rose-700">{{ lot.quantity | number: '1.0-3' }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+      </section>
+    </div>
+
     <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
       <!-- Resumen de compras -->
       <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -372,9 +507,10 @@
     <!-- Caja por categoría -->
     <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
       <h2 class="mb-4 flex items-center gap-2 text-sm font-semibold text-slate-800">
-        <span class="material-icons !text-[20px] text-blue-500">category</span>
-        Ingresos y egresos por categoría
+        <span class="material-icons !text-[20px] text-blue-500">account_balance_wallet</span>
+        Movimientos de caja por categoría
       </h2>
+      <p class="mb-4 text-xs text-slate-400">Categorías de movimientos de caja (ventas, gastos, etc.), no categorías de producto.</p>
       @if (cashByCategory().length === 0) {
         <p class="py-8 text-center text-sm text-slate-400">Sin movimientos de caja en el rango seleccionado.</p>
       } @else {

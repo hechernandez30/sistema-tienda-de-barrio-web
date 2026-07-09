@@ -5,6 +5,7 @@ import com.tiendadebarrio.reports.dto.CashByCategoryResponse;
 import com.tiendadebarrio.reports.dto.DailySalesProjection;
 import com.tiendadebarrio.reports.dto.LowStockResponse;
 import com.tiendadebarrio.reports.dto.PurchasesBySupplierResponse;
+import com.tiendadebarrio.reports.dto.SalesByCategoryResponse;
 import com.tiendadebarrio.reports.dto.SalesByPaymentMethodResponse;
 import com.tiendadebarrio.reports.dto.TopProductResponse;
 import com.tiendadebarrio.sales.entity.Sale;
@@ -97,6 +98,27 @@ public interface ReportRepository extends Repository<Sale, UUID> {
                                          @Param("from") LocalDateTime from,
                                          @Param("to") LocalDateTime to,
                                          Pageable pageable);
+
+    @Query("""
+            SELECT new com.tiendadebarrio.reports.dto.SalesByCategoryResponse(
+                c.id,
+                CASE WHEN c IS NULL THEN 'Sin categoría' ELSE c.name END,
+                COALESCE(SUM(si.quantity), 0),
+                COALESCE(SUM(si.lineTotal), 0),
+                COUNT(si))
+            FROM SaleItem si
+            JOIN si.product p
+            LEFT JOIN p.category c
+            JOIN si.sale s
+            WHERE s.deleted = false
+              AND s.status = :status
+              AND s.saleDate BETWEEN :from AND :to
+            GROUP BY c.id, c.name
+            ORDER BY SUM(si.lineTotal) DESC
+            """)
+    List<SalesByCategoryResponse> salesByCategory(@Param("status") SaleStatus status,
+                                                  @Param("from") LocalDateTime from,
+                                                  @Param("to") LocalDateTime to);
 
     // ------------------------------------------------------------------
     // Inventario

@@ -8,6 +8,7 @@ import com.tiendadebarrio.reports.dto.InventorySummaryResponse;
 import com.tiendadebarrio.reports.dto.LowStockResponse;
 import com.tiendadebarrio.reports.dto.PurchasesBySupplierResponse;
 import com.tiendadebarrio.reports.dto.PurchasesSummaryResponse;
+import com.tiendadebarrio.reports.dto.SalesByCategoryResponse;
 import com.tiendadebarrio.reports.dto.SalesByPaymentMethodResponse;
 import com.tiendadebarrio.reports.dto.SalesSummaryResponse;
 import com.tiendadebarrio.reports.dto.TopProductResponse;
@@ -51,6 +52,13 @@ public class ReportController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
         return ResponseEntity.ok(reportService.dailySales(from, to));
+    }
+
+    @GetMapping("/sales-by-category")
+    public ResponseEntity<List<SalesByCategoryResponse>> salesByCategory(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
+        return ResponseEntity.ok(reportService.salesByCategory(from, to));
     }
 
     @GetMapping("/top-products")

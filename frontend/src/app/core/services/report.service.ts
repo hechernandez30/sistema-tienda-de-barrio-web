@@ -12,6 +12,7 @@ import {
   LowStockReport,
   PurchasesBySupplierReport,
   PurchasesSummaryReport,
+  SalesByCategoryReport,
   SalesByPaymentMethodReport,
   SalesSummaryReport,
   TopProductReport,
@@ -45,6 +46,12 @@ export class ReportService {
 
   dailySales(range: DateRange): Observable<DailySalesReport[]> {
     return this.http.get<DailySalesReport[]>(`${this.baseUrl}/daily-sales`, {
+      params: this.rangeParams(range),
+    });
+  }
+
+  salesByCategory(range: DateRange): Observable<SalesByCategoryReport[]> {
+    return this.http.get<SalesByCategoryReport[]>(`${this.baseUrl}/sales-by-category`, {
       params: this.rangeParams(range),
     });
   }

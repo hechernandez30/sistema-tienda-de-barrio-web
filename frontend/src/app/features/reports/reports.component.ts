@@ -5,6 +5,8 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { forkJoin } from 'rxjs';
 
 import { DateRange, ReportService } from '../../core/services/report.service';
+import { InventoryService } from '../../core/services/inventory.service';
+import { ProductLot } from '../../core/models/inventory.model';
 import {
   CashByCategoryReport,
   CashSummaryReport,
@@ -17,6 +19,7 @@ import {
   PaymentMethod,
   PurchasesBySupplierReport,
   PurchasesSummaryReport,
+  SalesByCategoryReport,
   SalesByPaymentMethodReport,
   SalesSummaryReport,
   TopProductReport,
@@ -30,6 +33,7 @@ import {
 })
 export class ReportsComponent implements OnInit {
   private readonly reportService = inject(ReportService);
+  private readonly inventoryService = inject(InventoryService);
   private readonly fb = inject(FormBuilder);
   private readonly snackBar = inject(MatSnackBar);
 
@@ -47,6 +51,7 @@ export class ReportsComponent implements OnInit {
   readonly salesSummary = signal<SalesSummaryReport | null>(null);
   readonly salesByPayment = signal<SalesByPaymentMethodReport[]>([]);
   readonly dailySales = signal<DailySalesReport[]>([]);
+  readonly salesByCategory = signal<SalesByCategoryReport[]>([]);
   readonly topProducts = signal<TopProductReport[]>([]);
   readonly lowStock = signal<LowStockReport[]>([]);
   readonly inventorySummary = signal<InventorySummaryReport | null>(null);
@@ -55,6 +60,10 @@ export class ReportsComponent implements OnInit {
   readonly cashSummary = signal<CashSummaryReport | null>(null);
   readonly cashByCategory = signal<CashByCategoryReport[]>([]);
   readonly estimatedProfit = signal<EstimatedProfitReport | null>(null);
+  readonly expiringLots = signal<ProductLot[]>([]);
+  readonly expiredLots = signal<ProductLot[]>([]);
+
+  readonly EXPIRING_DAYS = 30;
 
   // Máximos para barras proporcionales.
   readonly maxPaymentAmount = computed(() =>
@@ -62,6 +71,9 @@ export class ReportsComponent implements OnInit {
   );
   readonly maxDailyAmount = computed(() =>
     Math.max(0, ...this.dailySales().map((d) => d.totalAmount)),
+  );
+  readonly maxCategoryAmount = computed(() =>
+    Math.max(0, ...this.salesByCategory().map((c) => c.totalAmount)),
   );
   readonly maxTopProductQty = computed(() =>
     Math.max(0, ...this.topProducts().map((p) => p.quantitySold)),
@@ -88,6 +100,16 @@ export class ReportsComponent implements OnInit {
   setToday(): void {
     const today = this.today();
     this.filterForm.setValue({ from: today, to: today });
+    this.loadAll();
+  }
+
+  setThisWeek(): void {
+    const now = new Date();
+    const dayOfWeek = now.getDay();
+    const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+    const monday = new Date(now);
+    monday.setDate(now.getDate() + mondayOffset);
+    this.filterForm.setValue({ from: this.toIso(monday), to: this.toIso(now) });
     this.loadAll();
   }
 
@@ -130,6 +152,7 @@ export class ReportsComponent implements OnInit {
       salesSummary: this.reportService.salesSummary(range),
       salesByPayment: this.reportService.salesByPaymentMethod(range),
       dailySales: this.reportService.dailySales(range),
+      salesByCategory: this.reportService.salesByCategory(range),
       topProducts: this.reportService.topProducts(range, 10),
       lowStock: this.reportService.lowStock(),
       inventorySummary: this.reportService.inventorySummary(),
@@ -138,11 +161,14 @@ export class ReportsComponent implements OnInit {
       cashSummary: this.reportService.cashSummary(range),
       cashByCategory: this.reportService.cashByCategory(range),
       estimatedProfit: this.reportService.estimatedProfit(range),
+      expiringLots: this.inventoryService.expiringLots(this.EXPIRING_DAYS),
+      expiredLots: this.inventoryService.expiredLots(),
     }).subscribe({
       next: (data) => {
         this.salesSummary.set(data.salesSummary);
         this.salesByPayment.set(data.salesByPayment);
         this.dailySales.set(data.dailySales);
+        this.salesByCategory.set(data.salesByCategory);
         this.topProducts.set(data.topProducts);
         this.lowStock.set(data.lowStock);
         this.inventorySummary.set(data.inventorySummary);
@@ -151,6 +177,8 @@ export class ReportsComponent implements OnInit {
         this.cashSummary.set(data.cashSummary);
         this.cashByCategory.set(data.cashByCategory);
         this.estimatedProfit.set(data.estimatedProfit);
+        this.expiringLots.set(data.expiringLots);
+        this.expiredLots.set(data.expiredLots);
         this.loading.set(false);
       },
       error: () => {
