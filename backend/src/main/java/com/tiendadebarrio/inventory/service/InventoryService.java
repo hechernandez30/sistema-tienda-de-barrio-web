@@ -5,11 +5,14 @@ import com.tiendadebarrio.common.exception.ApiException;
 import com.tiendadebarrio.inventory.dto.InventoryAdjustmentRequest;
 import com.tiendadebarrio.inventory.dto.InventoryMovementResponse;
 import com.tiendadebarrio.inventory.dto.LowStockResponse;
+import com.tiendadebarrio.inventory.dto.ProductLotResponse;
 import com.tiendadebarrio.inventory.dto.ProductStockResponse;
 import com.tiendadebarrio.inventory.entity.InventoryMovement;
 import com.tiendadebarrio.inventory.entity.InventoryMovementType;
+import com.tiendadebarrio.inventory.entity.ProductLot;
 import com.tiendadebarrio.inventory.mapper.InventoryMapper;
 import com.tiendadebarrio.inventory.repository.InventoryMovementRepository;
+import com.tiendadebarrio.products.dto.InitialLotRequest;
 import com.tiendadebarrio.products.entity.Product;
 import com.tiendadebarrio.products.repository.ProductRepository;
 import com.tiendadebarrio.security.SecurityUtils;
@@ -21,6 +24,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -37,6 +41,7 @@ public class InventoryService {
     private final InventoryMovementRepository inventoryMovementRepository;
     private final InventoryMapper inventoryMapper;
     private final AuditService auditService;
+    private final ProductLotService productLotService;
 
     @Transactional(readOnly = true)
     public List<InventoryMovementResponse> listMovements(int page, int size) {
@@ -60,24 +65,120 @@ public class InventoryService {
     public ProductStockResponse getStock(UUID productId) {
         Product product = productRepository.findByIdAndDeletedFalse(productId)
                 .orElseThrow(this::productNotFound);
-        return inventoryMapper.toStockResponse(product);
+        return inventoryMapper.toStockResponse(product, productLotService.getSellableQuantity(product));
     }
 
     @Transactional(readOnly = true)
     public List<LowStockResponse> lowStock() {
         return productRepository.findLowStock()
                 .stream()
-                .map(inventoryMapper::toLowStockResponse)
+                .map(product -> inventoryMapper.toLowStockResponse(
+                        product,
+                        productLotService.getSellableQuantity(product)))
                 .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<ProductLotResponse> listProductLots(UUID productId) {
+        Product product = findActiveProduct(productId);
+        if (!product.isTracksExpiration()) {
+            throw new ApiException(
+                    "El producto no controla vencimiento",
+                    HttpStatus.BAD_REQUEST,
+                    "PRODUCT_DOES_NOT_TRACK_EXPIRATION"
+            );
+        }
+        return productLotService.listByProduct(product.getId());
+    }
+
+    @Transactional(readOnly = true)
+    public List<ProductLotResponse> expiringLots(int days) {
+        return productLotService.expiringWithinDays(days);
+    }
+
+    @Transactional(readOnly = true)
+    public List<ProductLotResponse> expiredLots() {
+        return productLotService.expiredWithStock();
     }
 
     @Transactional
     public InventoryMovementResponse adjustIn(InventoryAdjustmentRequest request) {
+        Product product = findActiveProduct(request.getProductId());
+
+        if (product.isTracksExpiration()) {
+            productLotService.validateExpirationRequired(product, request.getExpirationDate());
+            productLotService.validateExpirationNotInPast(request.getExpirationDate());
+
+            BigDecimal previousStock = product.getCurrentStock();
+            ProductLot lot = productLotService.receiveStock(
+                    product,
+                    request.getQuantity(),
+                    request.getExpirationDate(),
+                    request.getLotCode(),
+                    request.getUnitCost(),
+                    null,
+                    null,
+                    request.getNotes());
+
+            Product refreshed = refreshProduct(product.getId());
+            InventoryMovement saved = recordMovementAfterStockChange(
+                    refreshed,
+                    InventoryMovementType.ADJUSTMENT_IN,
+                    request.getQuantity(),
+                    previousStock,
+                    refreshed.getCurrentStock(),
+                    request.getUnitCost(),
+                    null,
+                    null,
+                    lot,
+                    request.getNotes());
+
+            auditService.record(
+                    InventoryMovementType.ADJUSTMENT_IN.name(),
+                    AUDIT_MODULE,
+                    AUDIT_ENTITY,
+                    saved.getId(),
+                    null,
+                    auditSnapshot(saved));
+
+            return inventoryMapper.toMovementResponse(saved);
+        }
+
         return registerAdjustment(request, InventoryMovementType.ADJUSTMENT_IN);
     }
 
     @Transactional
     public InventoryMovementResponse adjustOut(InventoryAdjustmentRequest request) {
+        Product product = findActiveProduct(request.getProductId());
+
+        if (product.isTracksExpiration()) {
+            BigDecimal previousStock = product.getCurrentStock();
+            productLotService.consumeFefoForAdjustmentOut(product, request.getQuantity());
+
+            Product refreshed = refreshProduct(product.getId());
+            InventoryMovement saved = recordMovementAfterStockChange(
+                    refreshed,
+                    InventoryMovementType.ADJUSTMENT_OUT,
+                    request.getQuantity(),
+                    previousStock,
+                    refreshed.getCurrentStock(),
+                    request.getUnitCost(),
+                    null,
+                    null,
+                    null,
+                    request.getNotes());
+
+            auditService.record(
+                    InventoryMovementType.ADJUSTMENT_OUT.name(),
+                    AUDIT_MODULE,
+                    AUDIT_ENTITY,
+                    saved.getId(),
+                    null,
+                    auditSnapshot(saved));
+
+            return inventoryMapper.toMovementResponse(saved);
+        }
+
         return registerAdjustment(request, InventoryMovementType.ADJUSTMENT_OUT);
     }
 
@@ -106,14 +207,16 @@ public class InventoryService {
         return inventoryMapper.toMovementResponse(saved);
     }
 
-    /**
-     * Registra el stock inicial de un producto recién creado como un movimiento tipo
-     * ADJUSTMENT_IN con nota "Inventario inicial". Uso interno desde el módulo de productos,
-     * sin depender de un request HTTP. Debe invocarse únicamente al crear el producto y
-     * solo cuando la cantidad inicial es mayor que cero.
-     */
     @Transactional
     public InventoryMovement registerInitialStock(Product product, BigDecimal quantity, BigDecimal unitCost) {
+        if (product.isTracksExpiration()) {
+            throw new ApiException(
+                    "Use lotes iniciales para productos con control de vencimiento",
+                    HttpStatus.BAD_REQUEST,
+                    "USE_INITIAL_LOTS"
+            );
+        }
+
         InventoryMovement saved = registerMovement(
                 product,
                 InventoryMovementType.ADJUSTMENT_IN,
@@ -134,17 +237,69 @@ public class InventoryService {
         return saved;
     }
 
-    /**
-     * Descuenta stock por una venta (movimiento tipo SALE). Reutilizable por el módulo de ventas.
-     */
     @Transactional
-    public InventoryMovement registerSaleMovement(Product product, BigDecimal quantity, UUID saleId, String notes) {
+    public void registerInitialLotStock(Product product, InitialLotRequest lotRequest, BigDecimal unitCost) {
+        BigDecimal previousStock = product.getCurrentStock();
+        ProductLot lot = productLotService.receiveStock(
+                product,
+                lotRequest.getQuantity(),
+                lotRequest.getExpirationDate(),
+                lotRequest.getLotCode(),
+                unitCost,
+                null,
+                null,
+                INITIAL_STOCK_NOTE);
+
+        Product refreshed = refreshProduct(product.getId());
+        InventoryMovement saved = recordMovementAfterStockChange(
+                refreshed,
+                InventoryMovementType.ADJUSTMENT_IN,
+                lotRequest.getQuantity(),
+                previousStock,
+                refreshed.getCurrentStock(),
+                unitCost,
+                null,
+                null,
+                lot,
+                INITIAL_STOCK_NOTE);
+
+        auditService.record(
+                InventoryMovementType.ADJUSTMENT_IN.name(),
+                AUDIT_MODULE,
+                AUDIT_ENTITY,
+                saved.getId(),
+                null,
+                auditSnapshot(saved));
+    }
+
+    @Transactional
+    public InventoryMovement registerSaleMovement(
+            Product product,
+            BigDecimal quantity,
+            UUID saleId,
+            UUID saleItemId,
+            String notes) {
+        if (product.isTracksExpiration()) {
+            BigDecimal previousStock = product.getCurrentStock();
+            productLotService.consumeFefoForSale(product, quantity, saleId, saleItemId);
+
+            Product refreshed = refreshProduct(product.getId());
+            return recordMovementAfterStockChange(
+                    refreshed,
+                    InventoryMovementType.SALE,
+                    quantity,
+                    previousStock,
+                    refreshed.getCurrentStock(),
+                    null,
+                    null,
+                    saleId,
+                    null,
+                    notes);
+        }
+
         return registerMovement(product, InventoryMovementType.SALE, quantity, null, null, saleId, notes);
     }
 
-    /**
-     * Devuelve stock por la anulación de una venta (movimiento tipo SALE_CANCEL).
-     */
     @Transactional
     public InventoryMovement registerSaleCancellationMovement(
             Product product,
@@ -154,11 +309,130 @@ public class InventoryService {
         return registerMovement(product, InventoryMovementType.SALE_CANCEL, quantity, null, null, saleId, notes);
     }
 
+    @Transactional
+    public InventoryMovement registerPurchaseMovement(
+            Product product,
+            BigDecimal quantity,
+            BigDecimal unitCost,
+            UUID purchaseId,
+            UUID purchaseItemId,
+            LocalDate expirationDate,
+            String lotCode,
+            String notes) {
+        if (product.isTracksExpiration()) {
+            productLotService.validateExpirationRequired(product, expirationDate);
+            productLotService.validateExpirationNotInPast(expirationDate);
+
+            BigDecimal previousStock = product.getCurrentStock();
+            ProductLot lot = productLotService.receiveStock(
+                    product,
+                    quantity,
+                    expirationDate,
+                    lotCode,
+                    unitCost,
+                    purchaseId,
+                    purchaseItemId,
+                    notes);
+
+            Product refreshed = refreshProduct(product.getId());
+            return recordMovementAfterStockChange(
+                    refreshed,
+                    InventoryMovementType.PURCHASE,
+                    quantity,
+                    previousStock,
+                    refreshed.getCurrentStock(),
+                    unitCost,
+                    purchaseId,
+                    null,
+                    lot,
+                    notes);
+        }
+
+        return registerMovement(
+                product,
+                InventoryMovementType.PURCHASE,
+                quantity,
+                unitCost,
+                purchaseId,
+                null,
+                notes);
+    }
+
+    @Transactional
+    public InventoryMovement registerPurchaseCancellationMovement(
+            Product product,
+            BigDecimal quantity,
+            BigDecimal unitCost,
+            UUID purchaseId,
+            UUID purchaseItemId,
+            String notes) {
+        if (product.isTracksExpiration()) {
+            BigDecimal previousStock = product.getCurrentStock();
+            productLotService.reversePurchaseLot(purchaseItemId, quantity);
+
+            Product refreshed = refreshProduct(product.getId());
+            return recordMovementAfterStockChange(
+                    refreshed,
+                    InventoryMovementType.PURCHASE_CANCEL,
+                    quantity,
+                    previousStock,
+                    refreshed.getCurrentStock(),
+                    unitCost,
+                    purchaseId,
+                    null,
+                    null,
+                    notes);
+        }
+
+        return registerMovement(
+                product,
+                InventoryMovementType.PURCHASE_CANCEL,
+                quantity,
+                unitCost,
+                purchaseId,
+                null,
+                notes);
+    }
+
+    /**
+     * Registra un movimiento cuando el stock ya fue actualizado por el módulo de lotes.
+     */
+    @Transactional
+    public InventoryMovement recordMovementAfterStockChange(
+            Product product,
+            InventoryMovementType type,
+            BigDecimal quantity,
+            BigDecimal previousStock,
+            BigDecimal newStock,
+            BigDecimal unitCost,
+            UUID referencePurchaseId,
+            UUID referenceSaleId,
+            ProductLot lot,
+            String notes) {
+        UUID currentUserId = SecurityUtils.getCurrentUserId();
+
+        InventoryMovement movement = InventoryMovement.builder()
+                .product(product)
+                .movementType(type)
+                .quantity(quantity)
+                .previousStock(previousStock)
+                .newStock(newStock)
+                .unitCost(unitCost)
+                .referencePurchaseId(referencePurchaseId)
+                .referenceSaleId(referenceSaleId)
+                .lot(lot)
+                .notes(notes)
+                .createdBy(currentUserId)
+                .build();
+
+        product.setUpdatedBy(currentUserId);
+        productRepository.save(product);
+        return inventoryMovementRepository.save(movement);
+    }
+
     /**
      * Registra un movimiento de inventario aplicando el cambio de stock sobre el producto.
-     * Reutilizable por otros módulos (por ejemplo compras y ventas) para movimientos tipo
-     * PURCHASE / PURCHASE_CANCEL / SALE / SALE_CANCEL. No registra bitácora: la trazabilidad
-     * de negocio la gestiona el módulo llamante (compra o venta registra su propia bitácora).
+     * Solo para productos sin control de vencimiento.
      */
     @Transactional
     public InventoryMovement registerMovement(
@@ -169,6 +443,14 @@ public class InventoryService {
             UUID referencePurchaseId,
             UUID referenceSaleId,
             String notes) {
+        if (product.isTracksExpiration()) {
+            throw new ApiException(
+                    "El producto controla vencimiento; use el flujo de lotes",
+                    HttpStatus.BAD_REQUEST,
+                    "TRACKS_EXPIRATION_USE_LOTS"
+            );
+        }
+
         BigDecimal previousStock = product.getCurrentStock();
         BigDecimal newStock = isIncrease(type)
                 ? previousStock.add(quantity)
@@ -209,6 +491,11 @@ public class InventoryService {
             case PURCHASE, ADJUSTMENT_IN, SALE_CANCEL -> true;
             case SALE, ADJUSTMENT_OUT, PURCHASE_CANCEL -> false;
         };
+    }
+
+    private Product refreshProduct(UUID productId) {
+        return productRepository.findByIdAndDeletedFalse(productId)
+                .orElseThrow(this::productNotFound);
     }
 
     private Product findActiveProduct(UUID productId) {

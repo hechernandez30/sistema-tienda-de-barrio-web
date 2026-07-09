@@ -128,6 +128,10 @@
                 <th class="px-3 py-2.5">Producto</th>
                 <th class="px-3 py-2.5 text-right">Cantidad</th>
                 <th class="px-3 py-2.5 text-right">Costo unit.</th>
+                @if (hasTrackingItems()) {
+                  <th class="px-3 py-2.5">Vencimiento</th>
+                  <th class="px-3 py-2.5">Lote</th>
+                }
                 <th class="px-3 py-2.5 text-right">Subtotal</th>
                 <th class="px-3 py-2.5"></th>
               </tr>
@@ -159,6 +163,33 @@
                       class="w-28 rounded-lg border border-slate-300 px-2 py-1.5 text-right text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                     />
                   </td>
+                  @if (hasTrackingItems()) {
+                    <td class="px-3 py-2">
+                      @if (item.tracksExpiration) {
+                        <input
+                          type="date"
+                          [value]="item.expirationDate"
+                          (input)="updateExpirationDate(i, $any($event.target).value)"
+                          class="w-full min-w-[9rem] rounded-lg border border-slate-300 px-2 py-1.5 text-sm outline-none focus:border-blue-500"
+                        />
+                      } @else {
+                        <span class="text-xs text-slate-400">—</span>
+                      }
+                    </td>
+                    <td class="px-3 py-2">
+                      @if (item.tracksExpiration) {
+                        <input
+                          type="text"
+                          [value]="item.lotCode"
+                          (input)="updateLotCode(i, $any($event.target).value)"
+                          placeholder="Opcional"
+                          class="w-full min-w-[7rem] rounded-lg border border-slate-300 px-2 py-1.5 text-sm outline-none focus:border-blue-500"
+                        />
+                      } @else {
+                        <span class="text-xs text-slate-400">—</span>
+                      }
+                    </td>
+                  }
                   <td class="px-3 py-2 text-right font-medium text-slate-800">Q {{ (item.quantity * item.unitCost).toFixed(2) }}</td>
                   <td class="px-3 py-2 text-right">
                     <button

@@ -24,6 +24,8 @@ public class ProductDetailResponse {
     private final BigDecimal salePrice;
     private final BigDecimal minStock;
     private final BigDecimal currentStock;
+    private final BigDecimal sellableStock;
+    private final boolean tracksExpiration;
     private final boolean active;
     private final LocalDateTime createdAt;
     private final LocalDateTime updatedAt;

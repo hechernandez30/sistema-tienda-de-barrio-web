@@ -18,6 +18,7 @@ export interface SelectedProduct {
   name: string;
   barcode?: string | null;
   currentStock?: number | null;
+  tracksExpiration?: boolean;
 }
 
 export interface AdjustmentDialogData {
@@ -50,6 +51,8 @@ export class InventoryAdjustmentDialogComponent {
   readonly form = this.fb.nonNullable.group({
     quantity: [null as number | null, [Validators.required, Validators.min(0.001)]],
     unitCost: [null as number | null, [Validators.min(0)]],
+    expirationDate: [''],
+    lotCode: [''],
     notes: [''],
   });
 
@@ -87,6 +90,7 @@ export class InventoryAdjustmentDialogComponent {
       name: product.name,
       barcode: product.barcode,
       currentStock: product.currentStock,
+      tracksExpiration: product.tracksExpiration,
     });
     this.results.set([]);
     this.searchControl.setValue('', { emitEvent: false });
@@ -115,6 +119,16 @@ export class InventoryAdjustmentDialogComponent {
     };
     if (this.isIncoming && raw.unitCost !== null && raw.unitCost !== undefined) {
       request.unitCost = Number(raw.unitCost);
+    }
+    if (this.isIncoming && product.tracksExpiration) {
+      if (!raw.expirationDate) {
+        this.snackBar.open('La fecha de vencimiento es obligatoria para este producto', 'Cerrar', {
+          duration: 4000,
+        });
+        return;
+      }
+      request.expirationDate = raw.expirationDate;
+      request.lotCode = raw.lotCode?.trim() ? raw.lotCode.trim() : null;
     }
 
     this.saving.set(true);

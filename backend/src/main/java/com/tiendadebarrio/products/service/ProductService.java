@@ -3,6 +3,8 @@ package com.tiendadebarrio.products.service;
 import com.tiendadebarrio.audit.service.AuditService;
 import com.tiendadebarrio.common.exception.ApiException;
 import com.tiendadebarrio.inventory.service.InventoryService;
+import com.tiendadebarrio.inventory.service.ProductLotService;
+import com.tiendadebarrio.products.dto.InitialLotRequest;
 import com.tiendadebarrio.products.dto.ProductCreateRequest;
 import com.tiendadebarrio.products.dto.ProductDetailResponse;
 import com.tiendadebarrio.products.dto.ProductListResponse;
@@ -43,6 +45,7 @@ public class ProductService {
     private final ProductMapper productMapper;
     private final AuditService auditService;
     private final InventoryService inventoryService;
+    private final ProductLotService productLotService;
 
     @Transactional(readOnly = true)
     public List<ProductListResponse> list() {
@@ -103,7 +106,16 @@ public class ProductService {
         }
 
         UUID currentUserId = SecurityUtils.getCurrentUserId();
+        boolean tracksExpiration = Boolean.TRUE.equals(request.getTracksExpiration());
         BigDecimal initialStock = defaultAmount(request.getCurrentStock());
+
+        if (tracksExpiration && initialStock.signum() > 0) {
+            throw new ApiException(
+                    "Para productos con vencimiento use lotes iniciales en lugar de stock único",
+                    HttpStatus.BAD_REQUEST,
+                    "USE_INITIAL_LOTS"
+            );
+        }
 
         Product product = Product.builder()
                 .barcode(barcode)
@@ -116,6 +128,7 @@ public class ProductService {
                 .salePrice(defaultAmount(request.getSalePrice()))
                 .minStock(defaultAmount(request.getMinStock()))
                 .currentStock(BigDecimal.ZERO)
+                .tracksExpiration(tracksExpiration)
                 .active(request.getActive() == null || request.getActive())
                 .createdBy(currentUserId)
                 .build();
@@ -125,7 +138,16 @@ public class ProductService {
 
         auditService.record("CREATE", AUDIT_MODULE, AUDIT_ENTITY, saved.getId(), null, auditSnapshot(saved));
 
-        if (initialStock.signum() > 0) {
+        if (tracksExpiration) {
+            List<InitialLotRequest> initialLots = request.getInitialLots();
+            if (initialLots == null || initialLots.isEmpty()) {
+                return productMapper.toDetailResponse(saved);
+            }
+            for (InitialLotRequest lotRequest : initialLots) {
+                productLotService.validateExpirationNotInPast(lotRequest.getExpirationDate());
+                inventoryService.registerInitialLotStock(saved, lotRequest, saved.getPurchasePrice());
+            }
+        } else if (initialStock.signum() > 0) {
             inventoryService.registerInitialStock(saved, initialStock, saved.getPurchasePrice());
         }
 
@@ -153,6 +175,18 @@ public class ProductService {
                     HttpStatus.CONFLICT,
                     "PRODUCT_SKU_DUPLICATED"
             );
+        }
+
+        if (request.getTracksExpiration() != null
+                && request.getTracksExpiration() != product.isTracksExpiration()) {
+            if (product.getCurrentStock().signum() > 0) {
+                throw new ApiException(
+                        "No se puede cambiar el control de vencimiento con stock existente",
+                        HttpStatus.BAD_REQUEST,
+                        "TRACKS_EXPIRATION_CHANGE_BLOCKED"
+                );
+            }
+            product.setTracksExpiration(request.getTracksExpiration());
         }
 
         product.setBarcode(barcode);

@@ -128,6 +128,7 @@ CREATE TABLE IF NOT EXISTS products (
     sale_price NUMERIC(12,2) NOT NULL DEFAULT 0,
     min_stock NUMERIC(12,3) NOT NULL DEFAULT 0,
     current_stock NUMERIC(12,3) NOT NULL DEFAULT 0,
+    tracks_expiration BOOLEAN NOT NULL DEFAULT FALSE,
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
     is_deleted BOOLEAN NOT NULL DEFAULT FALSE,
     created_at TIMESTAMP NOT NULL DEFAULT NOW(),
@@ -300,12 +301,55 @@ CREATE TABLE IF NOT EXISTS purchase_items (
     quantity NUMERIC(12,3) NOT NULL,
     unit_cost NUMERIC(12,2) NOT NULL,
     line_total NUMERIC(12,2) NOT NULL,
+    expiration_date DATE,
+    lot_code VARCHAR(50),
     created_at TIMESTAMP NOT NULL DEFAULT NOW(),
     CONSTRAINT ck_purchase_items_values CHECK (quantity > 0 AND unit_cost >= 0 AND line_total >= 0)
 );
 
 CREATE INDEX IF NOT EXISTS idx_purchases_date ON purchases (purchase_date);
 CREATE INDEX IF NOT EXISTS idx_purchase_items_purchase ON purchase_items (purchase_id);
+
+-- ============================================================
+-- Lotes de producto (vencimiento)
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS product_lots (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    product_id UUID NOT NULL REFERENCES products(id),
+    lot_code VARCHAR(50),
+    expiration_date DATE NOT NULL,
+    quantity NUMERIC(12,3) NOT NULL DEFAULT 0,
+    unit_cost NUMERIC(12,2),
+    received_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    purchase_id UUID REFERENCES purchases(id),
+    purchase_item_id UUID REFERENCES purchase_items(id),
+    notes TEXT,
+    is_deleted BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP,
+    deleted_at TIMESTAMP,
+    CONSTRAINT ck_product_lots_quantity CHECK (quantity >= 0)
+);
+
+CREATE INDEX IF NOT EXISTS idx_product_lots_product ON product_lots (product_id);
+CREATE INDEX IF NOT EXISTS idx_product_lots_expiration ON product_lots (expiration_date);
+CREATE INDEX IF NOT EXISTS idx_product_lots_product_expiration
+    ON product_lots (product_id, expiration_date)
+    WHERE is_deleted = FALSE AND quantity > 0;
+
+CREATE TABLE IF NOT EXISTS sale_lot_allocations (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    sale_id UUID NOT NULL REFERENCES sales(id),
+    sale_item_id UUID NOT NULL REFERENCES sale_items(id),
+    product_lot_id UUID NOT NULL REFERENCES product_lots(id),
+    quantity NUMERIC(12,3) NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    CONSTRAINT ck_sale_lot_allocations_quantity CHECK (quantity > 0)
+);
+
+CREATE INDEX IF NOT EXISTS idx_sale_lot_allocations_sale ON sale_lot_allocations (sale_id);
+CREATE INDEX IF NOT EXISTS idx_sale_lot_allocations_sale_item ON sale_lot_allocations (sale_item_id);
 
 -- ============================================================
 -- Inventario
@@ -321,6 +365,7 @@ CREATE TABLE IF NOT EXISTS inventory_movements (
     unit_cost NUMERIC(12,2),
     reference_sale_id UUID REFERENCES sales(id),
     reference_purchase_id UUID REFERENCES purchases(id),
+    lot_id UUID REFERENCES product_lots(id),
     notes TEXT,
     created_at TIMESTAMP NOT NULL DEFAULT NOW(),
     created_by UUID REFERENCES app_users(id),

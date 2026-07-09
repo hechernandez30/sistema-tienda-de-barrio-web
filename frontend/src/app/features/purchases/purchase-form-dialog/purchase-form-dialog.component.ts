@@ -23,6 +23,9 @@ interface EditableItem {
   barcode?: string | null;
   quantity: number;
   unitCost: number;
+  tracksExpiration: boolean;
+  expirationDate: string;
+  lotCode: string;
 }
 
 @Component({
@@ -62,6 +65,7 @@ export class PurchaseFormDialogComponent implements OnInit {
   });
 
   readonly subtotal = computed(() => this.items().reduce((acc, item) => acc + item.quantity * item.unitCost, 0));
+  readonly hasTrackingItems = computed(() => this.items().some((item) => item.tracksExpiration));
 
   constructor() {
     this.productSearchControl.valueChanges
@@ -113,6 +117,9 @@ export class PurchaseFormDialogComponent implements OnInit {
           barcode: product.barcode,
           quantity: 1,
           unitCost: product.salePrice ?? 0,
+          tracksExpiration: !!product.tracksExpiration,
+          expirationDate: '',
+          lotCode: '',
         },
       ]);
     }
@@ -138,6 +145,18 @@ export class PurchaseFormDialogComponent implements OnInit {
     this.items.update((items) => items.filter((_, i) => i !== index));
   }
 
+  updateExpirationDate(index: number, value: string): void {
+    this.items.update((items) =>
+      items.map((item, i) => (i === index ? { ...item, expirationDate: value } : item)),
+    );
+  }
+
+  updateLotCode(index: number, value: string): void {
+    this.items.update((items) =>
+      items.map((item, i) => (i === index ? { ...item, lotCode: value } : item)),
+    );
+  }
+
   save(): void {
     if (this.saving()) {
       return;
@@ -156,12 +175,21 @@ export class PurchaseFormDialogComponent implements OnInit {
       this.snackBar.open('Revisa las cantidades y costos de los productos', 'Cerrar', { duration: 3500 });
       return;
     }
+    const missingExpiration = this.items().some((i) => i.tracksExpiration && !i.expirationDate);
+    if (missingExpiration) {
+      this.snackBar.open('Los productos con vencimiento requieren fecha de vencimiento en cada línea', 'Cerrar', {
+        duration: 4000,
+      });
+      return;
+    }
 
     const raw = this.form.getRawValue();
     const itemsPayload: PurchaseItemRequest[] = this.items().map((i) => ({
       productId: i.productId,
       quantity: i.quantity,
       unitCost: i.unitCost,
+      expirationDate: i.tracksExpiration ? i.expirationDate : null,
+      lotCode: i.tracksExpiration && i.lotCode.trim() ? i.lotCode.trim() : null,
     }));
 
     const payload: PurchaseCreateRequest = {

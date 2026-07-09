@@ -4,6 +4,7 @@ import lombok.Builder;
 import lombok.Getter;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.UUID;
 
 @Getter
@@ -17,4 +18,6 @@ public class PurchaseItemResponse {
     private final BigDecimal quantity;
     private final BigDecimal unitCost;
     private final BigDecimal lineTotal;
+    private final LocalDate expirationDate;
+    private final String lotCode;
 }

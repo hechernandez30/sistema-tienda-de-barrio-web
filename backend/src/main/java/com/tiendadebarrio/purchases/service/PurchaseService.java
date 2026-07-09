@@ -3,8 +3,8 @@ package com.tiendadebarrio.purchases.service;
 import com.tiendadebarrio.audit.service.AuditService;
 import com.tiendadebarrio.common.enums.PaymentMethod;
 import com.tiendadebarrio.common.exception.ApiException;
-import com.tiendadebarrio.inventory.entity.InventoryMovementType;
 import com.tiendadebarrio.inventory.service.InventoryService;
+import com.tiendadebarrio.inventory.service.ProductLotService;
 import com.tiendadebarrio.products.entity.Product;
 import com.tiendadebarrio.products.repository.ProductRepository;
 import com.tiendadebarrio.purchases.dto.PurchaseCreateRequest;
@@ -46,6 +46,7 @@ public class PurchaseService {
     private final SupplierRepository supplierRepository;
     private final ProductRepository productRepository;
     private final InventoryService inventoryService;
+    private final ProductLotService productLotService;
     private final PurchaseMapper purchaseMapper;
     private final AuditService auditService;
 
@@ -94,6 +95,11 @@ public class PurchaseService {
         BigDecimal subtotal = BigDecimal.ZERO;
         for (PurchaseItemRequest itemRequest : request.getItems()) {
             Product product = findUsableProduct(itemRequest.getProductId());
+            productLotService.validateExpirationRequired(product, itemRequest.getExpirationDate());
+            if (product.isTracksExpiration()) {
+                productLotService.validateExpirationNotInPast(itemRequest.getExpirationDate());
+            }
+
             BigDecimal lineTotal = itemRequest.getQuantity()
                     .multiply(itemRequest.getUnitCost())
                     .setScale(MONEY_SCALE, RoundingMode.HALF_UP);
@@ -103,6 +109,8 @@ public class PurchaseService {
                     .quantity(itemRequest.getQuantity())
                     .unitCost(itemRequest.getUnitCost())
                     .lineTotal(lineTotal)
+                    .expirationDate(itemRequest.getExpirationDate())
+                    .lotCode(itemRequest.getLotCode())
                     .build();
             purchase.addItem(item);
 
@@ -141,13 +149,14 @@ public class PurchaseService {
 
         for (PurchaseItem item : purchase.getItems()) {
             Product product = ensureUsable(item.getProduct());
-            inventoryService.registerMovement(
+            inventoryService.registerPurchaseMovement(
                     product,
-                    InventoryMovementType.PURCHASE,
                     item.getQuantity(),
                     item.getUnitCost(),
                     purchase.getId(),
-                    null,
+                    item.getId(),
+                    item.getExpirationDate(),
+                    item.getLotCode(),
                     "Confirmación de compra");
         }
 
@@ -178,13 +187,12 @@ public class PurchaseService {
         if (purchase.getStatus() == PurchaseStatus.CONFIRMED) {
             for (PurchaseItem item : purchase.getItems()) {
                 Product product = ensureUsable(item.getProduct());
-                inventoryService.registerMovement(
+                inventoryService.registerPurchaseCancellationMovement(
                         product,
-                        InventoryMovementType.PURCHASE_CANCEL,
                         item.getQuantity(),
                         item.getUnitCost(),
                         purchase.getId(),
-                        null,
+                        item.getId(),
                         "Cancelación de compra");
             }
         }

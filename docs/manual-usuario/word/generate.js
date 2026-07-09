@@ -1,11 +1,14 @@
 /*
- * Genera el Manual de Usuario en formato Word (.docx) a partir de
- * ../manual-usuario.md. Cada imagen del Markdown se convierte en un
- * "recuadro" (marco punteado) donde el usuario puede pegar la captura.
+ * Genera un documento Word (.docx) a partir de un archivo Markdown.
+ * Cada imagen del Markdown se convierte en un "recuadro" (marco punteado)
+ * donde se puede pegar una captura.
  *
- * Uso:
+ * Uso (manual de usuario, por defecto):
  *   npm install
  *   npm run build
+ *
+ * Uso genérico (otro manual):
+ *   node generate.js <input.md> <output.docx> "<texto pie de página>" "<título>"
  */
 
 const fs = require('fs');
@@ -29,8 +32,15 @@ const {
   PageNumber,
 } = require('docx');
 
-const MD_PATH = path.join(__dirname, '..', 'manual-usuario.md');
-const OUT_PATH = path.join(__dirname, '..', 'Manual-de-Usuario-Tienda-de-Barrio.docx');
+// Rutas por defecto (manual de usuario). Se pueden sobreescribir por argumentos:
+//   node generate.js <input.md> <output.docx> "<pie de página>" "<título>"
+const DEFAULT_MD = path.join(__dirname, '..', 'manual-usuario.md');
+const DEFAULT_OUT = path.join(__dirname, '..', 'Manual-de-Usuario-Tienda-de-Barrio.docx');
+
+const MD_PATH = process.argv[2] ? path.resolve(process.argv[2]) : DEFAULT_MD;
+const OUT_PATH = process.argv[3] ? path.resolve(process.argv[3]) : DEFAULT_OUT;
+const FOOTER_LABEL = process.argv[4] || 'Manual de Usuario · Sistema Tienda de Barrio · Página ';
+const DOC_TITLE = process.argv[5] || 'Manual de Usuario - Sistema Tienda de Barrio';
 
 const GRAY = '6B7280';
 const LIGHT_GRAY = 'AAAAAA';
@@ -395,7 +405,7 @@ function main() {
 
   const doc = new Document({
     creator: 'Sistema Tienda de Barrio',
-    title: 'Manual de Usuario - Sistema Tienda de Barrio',
+    title: DOC_TITLE,
     styles: {
       default: {
         document: {
@@ -415,7 +425,7 @@ function main() {
               new Paragraph({
                 alignment: AlignmentType.CENTER,
                 children: [
-                  new TextRun({ text: 'Manual de Usuario · Sistema Tienda de Barrio · Página ', size: 16, color: GRAY }),
+                  new TextRun({ text: FOOTER_LABEL, size: 16, color: GRAY }),
                   new TextRun({ children: [PageNumber.CURRENT], size: 16, color: GRAY }),
                 ],
               }),

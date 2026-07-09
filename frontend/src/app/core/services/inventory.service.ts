@@ -7,6 +7,7 @@ import {
   InventoryAdjustmentRequest,
   InventoryMovement,
   LowStockProduct,
+  ProductLot,
 } from '../models/inventory.model';
 
 @Injectable({ providedIn: 'root' })
@@ -21,6 +22,19 @@ export class InventoryService {
 
   listProductMovements(productId: string): Observable<InventoryMovement[]> {
     return this.http.get<InventoryMovement[]>(`${this.baseUrl}/products/${productId}/movements`);
+  }
+
+  listProductLots(productId: string): Observable<ProductLot[]> {
+    return this.http.get<ProductLot[]>(`${this.baseUrl}/products/${productId}/lots`);
+  }
+
+  expiringLots(days = 30): Observable<ProductLot[]> {
+    const params = new HttpParams().set('days', days);
+    return this.http.get<ProductLot[]>(`${this.baseUrl}/lots/expiring`, { params });
+  }
+
+  expiredLots(): Observable<ProductLot[]> {
+    return this.http.get<ProductLot[]>(`${this.baseUrl}/lots/expired`);
   }
 
   lowStock(): Observable<LowStockProduct[]> {

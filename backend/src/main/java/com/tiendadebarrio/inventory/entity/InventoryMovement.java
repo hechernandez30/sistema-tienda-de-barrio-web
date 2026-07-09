@@ -65,6 +65,10 @@ public class InventoryMovement {
     @Column(name = "reference_purchase_id")
     private UUID referencePurchaseId;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "lot_id")
+    private ProductLot lot;
+
     @Column(columnDefinition = "text")
     private String notes;
 

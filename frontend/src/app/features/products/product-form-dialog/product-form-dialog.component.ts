@@ -23,6 +23,12 @@ export interface ProductDialogData {
   product?: ProductDetail;
 }
 
+export interface InitialLotRow {
+  quantity: number;
+  expirationDate: string;
+  lotCode: string;
+}
+
 @Component({
   selector: 'app-product-form-dialog',
   standalone: true,
@@ -45,6 +51,9 @@ export class ProductFormDialogComponent {
 
   readonly categories = signal<Category[]>([]);
   readonly unitMeasures = signal<UnitMeasure[]>([]);
+  readonly initialLots = signal<InitialLotRow[]>([]);
+
+  readonly tracksExpirationEnabled = computed(() => this.form.controls.tracksExpiration.value);
 
   readonly title = computed(() => {
     switch (this.data.mode) {
@@ -67,7 +76,8 @@ export class ProductFormDialogComponent {
     purchasePrice: [0, [Validators.required, Validators.min(0)]],
     salePrice: [0, [Validators.required, Validators.min(0)]],
     minStock: [0, [Validators.required, Validators.min(0)]],
-    currentStock: [0, [Validators.required, Validators.min(0)]],
+    currentStock: [0, [Validators.min(0)]],
+    tracksExpiration: [false],
     active: [true],
   });
 
@@ -85,15 +95,28 @@ export class ProductFormDialogComponent {
         salePrice: product.salePrice,
         minStock: product.minStock,
         currentStock: product.currentStock,
+        tracksExpiration: product.tracksExpiration,
         active: product.active,
       });
     }
+
+    this.form.controls.tracksExpiration.valueChanges.subscribe((enabled) => {
+      if (enabled && this.isCreate) {
+        this.form.controls.currentStock.setValue(0);
+        if (this.initialLots().length === 0) {
+          this.addInitialLot();
+        }
+      }
+    });
 
     this.loadCatalogs();
 
     // El stock actual se ajusta desde Inventario: sólo editable al crear.
     if (this.isEdit) {
       this.form.controls.currentStock.disable();
+      if (product && (product.tracksExpiration || product.currentStock > 0)) {
+        this.form.controls.tracksExpiration.disable();
+      }
     }
     if (this.isView) {
       this.form.disable();
@@ -198,6 +221,32 @@ export class ProductFormDialogComponent {
     });
   }
 
+  addInitialLot(): void {
+    this.initialLots.update((rows) => [
+      ...rows,
+      { quantity: 1, expirationDate: '', lotCode: '' },
+    ]);
+  }
+
+  removeInitialLot(index: number): void {
+    this.initialLots.update((rows) => rows.filter((_, i) => i !== index));
+  }
+
+  updateInitialLot(index: number, field: keyof InitialLotRow, value: string): void {
+    this.initialLots.update((rows) =>
+      rows.map((row, i) => {
+        if (i !== index) {
+          return row;
+        }
+        if (field === 'quantity') {
+          const quantity = Number(value);
+          return { ...row, quantity: Number.isFinite(quantity) ? quantity : 0 };
+        }
+        return { ...row, [field]: value };
+      }),
+    );
+  }
+
   save(): void {
     if (this.isView) {
       this.dialogRef.close(false);
@@ -206,6 +255,23 @@ export class ProductFormDialogComponent {
     if (this.form.invalid || this.saving()) {
       this.form.markAllAsTouched();
       return;
+    }
+
+    if (this.isCreate && this.form.controls.tracksExpiration.value) {
+      const lots = this.initialLots();
+      if (lots.length === 0) {
+        this.snackBar.open('Agrega al menos un lote inicial con fecha de vencimiento', 'Cerrar', {
+          duration: 4000,
+        });
+        return;
+      }
+      const invalidLot = lots.some((lot) => lot.quantity <= 0 || !lot.expirationDate);
+      if (invalidLot) {
+        this.snackBar.open('Cada lote debe tener cantidad mayor que cero y fecha de vencimiento', 'Cerrar', {
+          duration: 4000,
+        });
+        return;
+      }
     }
 
     this.saving.set(true);
@@ -250,7 +316,8 @@ export class ProductFormDialogComponent {
   }
 
   private buildCreatePayload(raw: ReturnType<typeof this.form.getRawValue>): ProductCreatePayload {
-    return {
+    const tracksExpiration = raw.tracksExpiration;
+    const payload: ProductCreatePayload = {
       barcode: raw.barcode.trim(),
       sku: this.emptyToNull(raw.sku),
       name: raw.name.trim(),
@@ -260,9 +327,21 @@ export class ProductFormDialogComponent {
       purchasePrice: Number(raw.purchasePrice),
       salePrice: Number(raw.salePrice),
       minStock: Number(raw.minStock),
-      currentStock: Number(raw.currentStock),
+      tracksExpiration,
       active: raw.active,
     };
+
+    if (tracksExpiration) {
+      payload.initialLots = this.initialLots().map((lot) => ({
+        quantity: lot.quantity,
+        expirationDate: lot.expirationDate,
+        lotCode: this.emptyToNull(lot.lotCode),
+      }));
+    } else {
+      payload.currentStock = Number(raw.currentStock);
+    }
+
+    return payload;
   }
 
   private buildUpdatePayload(raw: ReturnType<typeof this.form.getRawValue>): ProductUpdatePayload {
@@ -276,6 +355,7 @@ export class ProductFormDialogComponent {
       purchasePrice: Number(raw.purchasePrice),
       salePrice: Number(raw.salePrice),
       minStock: Number(raw.minStock),
+      tracksExpiration: raw.tracksExpiration,
       active: raw.active,
     };
   }

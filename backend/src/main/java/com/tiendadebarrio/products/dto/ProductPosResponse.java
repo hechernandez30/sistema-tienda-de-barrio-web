@@ -15,5 +15,7 @@ public class ProductPosResponse {
     private final String name;
     private final BigDecimal salePrice;
     private final BigDecimal currentStock;
+    private final BigDecimal sellableStock;
+    private final boolean tracksExpiration;
     private final String unitMeasureName;
 }

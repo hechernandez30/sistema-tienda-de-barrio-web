@@ -96,8 +96,12 @@
                   </div>
                   <div class="text-right">
                     <p class="text-sm font-semibold text-slate-800">Q {{ product.salePrice | number: '1.2-2' }}</p>
-                    <p class="text-xs" [class]="product.currentStock > 0 ? 'text-slate-500' : 'text-rose-500'">
-                      Stock: {{ product.currentStock | number: '1.0-3' }}
+                    <p class="text-xs" [class]="(product.sellableStock ?? product.currentStock) > 0 ? 'text-slate-500' : 'text-rose-500'">
+                      @if (product.tracksExpiration) {
+                        Vendible: {{ (product.sellableStock ?? product.currentStock) | number: '1.0-3' }}
+                      } @else {
+                        Stock: {{ product.currentStock | number: '1.0-3' }}
+                      }
                     </p>
                   </div>
                 </button>
@@ -142,7 +146,11 @@
                         <p class="font-medium text-slate-800">{{ item.productName }}</p>
                         <p class="font-mono text-xs text-slate-500">{{ item.barcode }}</p>
                         <p class="text-xs" [class]="lineExceedsStock(item) ? 'text-rose-600' : 'text-slate-400'">
-                          Stock disponible: {{ item.currentStock | number: '1.0-3' }}
+                          @if (item.tracksExpiration) {
+                            Stock vendible: {{ item.availableStock | number: '1.0-3' }}
+                          } @else {
+                            Stock disponible: {{ item.availableStock | number: '1.0-3' }}
+                          }
                         </p>
                       </td>
                       <td class="px-4 py-3 text-right text-slate-700">Q {{ item.salePrice | number: '1.2-2' }}</td>
@@ -154,7 +162,7 @@
                           <input
                             type="number"
                             min="1"
-                            [max]="item.currentStock"
+                            [max]="item.availableStock"
                             [value]="item.quantity"
                             (input)="updateQuantity(i, $any($event.target).value)"
                             class="w-16 rounded-lg border px-2 py-1 text-center text-sm outline-none focus:ring-2 focus:ring-blue-500/20"

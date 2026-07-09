@@ -4,6 +4,7 @@ import com.tiendadebarrio.inventory.dto.InventoryAdjustmentRequest;
 import com.tiendadebarrio.inventory.dto.InventoryMovementResponse;
 import com.tiendadebarrio.inventory.dto.LowStockResponse;
 import com.tiendadebarrio.inventory.dto.ProductStockResponse;
+import com.tiendadebarrio.inventory.dto.ProductLotResponse;
 import com.tiendadebarrio.inventory.service.InventoryService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -52,6 +53,25 @@ public class InventoryController {
     @PreAuthorize("hasAnyRole('ADMIN', 'INVENTARIO', 'REPORTES')")
     public ResponseEntity<List<LowStockResponse>> lowStock() {
         return ResponseEntity.ok(inventoryService.lowStock());
+    }
+
+    @GetMapping("/products/{productId}/lots")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INVENTARIO')")
+    public ResponseEntity<List<ProductLotResponse>> listProductLots(@PathVariable UUID productId) {
+        return ResponseEntity.ok(inventoryService.listProductLots(productId));
+    }
+
+    @GetMapping("/lots/expiring")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INVENTARIO', 'REPORTES')")
+    public ResponseEntity<List<ProductLotResponse>> expiringLots(
+            @RequestParam(defaultValue = "30") int days) {
+        return ResponseEntity.ok(inventoryService.expiringLots(days));
+    }
+
+    @GetMapping("/lots/expired")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INVENTARIO', 'REPORTES')")
+    public ResponseEntity<List<ProductLotResponse>> expiredLots() {
+        return ResponseEntity.ok(inventoryService.expiredLots());
     }
 
     @PostMapping("/adjustments/in")

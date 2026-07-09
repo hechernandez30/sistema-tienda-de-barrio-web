@@ -25,7 +25,22 @@ export interface InventoryAdjustmentRequest {
   productId: string;
   quantity: number;
   unitCost?: number | null;
+  expirationDate?: string | null;
+  lotCode?: string | null;
   notes?: string | null;
+}
+
+export interface ProductLot {
+  id: string;
+  productId: string;
+  productName: string;
+  barcode?: string | null;
+  lotCode?: string | null;
+  expirationDate: string;
+  daysToExpire: number;
+  quantity: number;
+  unitCost?: number | null;
+  expired: boolean;
 }
 
 export interface LowStockProduct {

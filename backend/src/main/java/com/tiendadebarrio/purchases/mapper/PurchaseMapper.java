@@ -60,6 +60,8 @@ public class PurchaseMapper {
                 .quantity(item.getQuantity())
                 .unitCost(item.getUnitCost())
                 .lineTotal(item.getLineTotal())
+                .expirationDate(item.getExpirationDate())
+                .lotCode(item.getLotCode())
                 .build();
     }
 

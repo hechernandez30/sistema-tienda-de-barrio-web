@@ -25,6 +25,8 @@ export interface ProductDetail {
   salePrice: number;
   minStock: number;
   currentStock: number;
+  sellableStock?: number;
+  tracksExpiration: boolean;
   active: boolean;
   createdAt?: string;
   updatedAt?: string;
@@ -37,10 +39,18 @@ export interface ProductPos {
   name: string;
   salePrice: number;
   currentStock: number;
+  sellableStock?: number;
+  tracksExpiration?: boolean;
   unitMeasureName?: string | null;
 }
 
-/** Payload de creación: el backend acepta currentStock inicial. */
+export interface InitialLotPayload {
+  quantity: number;
+  expirationDate: string;
+  lotCode?: string | null;
+}
+
+/** Payload de creación: el backend acepta currentStock inicial o lotes. */
 export interface ProductCreatePayload {
   barcode: string;
   sku?: string | null;
@@ -51,7 +61,9 @@ export interface ProductCreatePayload {
   purchasePrice: number;
   salePrice: number;
   minStock: number;
-  currentStock: number;
+  currentStock?: number;
+  tracksExpiration?: boolean;
+  initialLots?: InitialLotPayload[];
   active: boolean;
 }
 
@@ -66,5 +78,6 @@ export interface ProductUpdatePayload {
   purchasePrice: number;
   salePrice: number;
   minStock: number;
+  tracksExpiration?: boolean;
   active: boolean;
 }

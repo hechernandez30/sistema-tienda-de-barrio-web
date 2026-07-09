@@ -64,6 +64,9 @@ public class Product extends AuditableEntity {
     @Column(name = "current_stock", nullable = false, precision = 12, scale = 3)
     private BigDecimal currentStock;
 
+    @Column(name = "tracks_expiration", nullable = false)
+    private boolean tracksExpiration = false;
+
     @Column(name = "is_active", nullable = false)
     private boolean active = true;
 

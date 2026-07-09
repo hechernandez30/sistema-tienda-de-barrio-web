@@ -6,6 +6,7 @@ import lombok.Getter;
 import lombok.Setter;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.UUID;
 
 @Getter
@@ -22,4 +23,8 @@ public class PurchaseItemRequest {
     @NotNull(message = "El costo unitario es obligatorio")
     @DecimalMin(value = "0.0", message = "El costo unitario no puede ser negativo")
     private BigDecimal unitCost;
+
+    private LocalDate expirationDate;
+
+    private String lotCode;
 }

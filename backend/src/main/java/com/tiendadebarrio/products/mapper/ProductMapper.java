@@ -1,13 +1,20 @@
 package com.tiendadebarrio.products.mapper;
 
+import com.tiendadebarrio.inventory.service.ProductLotService;
 import com.tiendadebarrio.products.dto.ProductDetailResponse;
 import com.tiendadebarrio.products.dto.ProductListResponse;
 import com.tiendadebarrio.products.dto.ProductPosResponse;
 import com.tiendadebarrio.products.entity.Product;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
+import java.math.BigDecimal;
+
 @Component
+@RequiredArgsConstructor
 public class ProductMapper {
+
+    private final ProductLotService productLotService;
 
     public ProductListResponse toListResponse(Product product) {
         return ProductListResponse.builder()
@@ -25,6 +32,7 @@ public class ProductMapper {
     }
 
     public ProductDetailResponse toDetailResponse(Product product) {
+        BigDecimal sellable = productLotService.getSellableQuantity(product);
         return ProductDetailResponse.builder()
                 .id(product.getId())
                 .barcode(product.getBarcode())
@@ -39,6 +47,8 @@ public class ProductMapper {
                 .salePrice(product.getSalePrice())
                 .minStock(product.getMinStock())
                 .currentStock(product.getCurrentStock())
+                .sellableStock(sellable)
+                .tracksExpiration(product.isTracksExpiration())
                 .active(product.isActive())
                 .createdAt(product.getCreatedAt())
                 .updatedAt(product.getUpdatedAt())
@@ -46,12 +56,15 @@ public class ProductMapper {
     }
 
     public ProductPosResponse toPosResponse(Product product) {
+        BigDecimal sellable = productLotService.getSellableQuantity(product);
         return ProductPosResponse.builder()
                 .id(product.getId())
                 .barcode(product.getBarcode())
                 .name(product.getName())
                 .salePrice(product.getSalePrice())
                 .currentStock(product.getCurrentStock())
+                .sellableStock(sellable)
+                .tracksExpiration(product.isTracksExpiration())
                 .unitMeasureName(product.getUnitMeasure() != null ? product.getUnitMeasure().getName() : null)
                 .build();
     }

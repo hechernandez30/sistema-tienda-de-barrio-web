@@ -1,8 +1,12 @@
 <div class="flex max-h-[85vh] w-full flex-col">
   <!-- Header -->
-  <div class="flex items-center justify-between border-b border-slate-200 px-6 py-4">
+  <div
+    class="flex items-center justify-between border-b border-slate-200 px-6 py-4"
+  >
     <div class="flex items-center gap-3">
-      <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-100 text-blue-600">
+      <div
+        class="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-100 text-blue-600"
+      >
         <span class="material-icons !text-[22px]">inventory_2</span>
       </div>
       <h2 class="text-base font-semibold text-slate-800">{{ title() }}</h2>
@@ -18,26 +22,43 @@
   </div>
 
   <!-- Contenido -->
-  <form [formGroup]="form" (ngSubmit)="save()" class="flex min-h-0 flex-1 flex-col">
-    <div class="grid grid-cols-1 gap-4 overflow-y-auto px-6 py-5 sm:grid-cols-2">
+  <form
+    [formGroup]="form"
+    (ngSubmit)="save()"
+    class="flex min-h-0 flex-1 flex-col"
+  >
+    <div
+      class="grid grid-cols-1 gap-4 overflow-y-auto px-6 py-5 sm:grid-cols-2"
+    >
       <!-- Código de barras -->
       <div>
-        <label class="mb-1.5 block text-sm font-medium text-slate-700">Código de barras *</label>
+        <label class="mb-1.5 block text-sm font-medium text-slate-700"
+          >Código de barras *</label
+        >
         <input
           type="text"
           formControlName="barcode"
           placeholder="Ej: 7501234567890"
           class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500 disabled:bg-slate-50 disabled:text-slate-500"
-          [class.border-red-400]="form.controls.barcode.touched && form.controls.barcode.invalid"
+          [class.border-red-400]="
+            form.controls.barcode.touched && form.controls.barcode.invalid
+          "
         />
-        @if (form.controls.barcode.touched && form.controls.barcode.hasError('required')) {
-          <p class="mt-1 text-xs text-red-600">El código de barras es obligatorio</p>
+        @if (
+          form.controls.barcode.touched &&
+          form.controls.barcode.hasError("required")
+        ) {
+          <p class="mt-1 text-xs text-red-600">
+            El código de barras es obligatorio
+          </p>
         }
       </div>
 
       <!-- SKU -->
       <div>
-        <label class="mb-1.5 block text-sm font-medium text-slate-700">SKU</label>
+        <label class="mb-1.5 block text-sm font-medium text-slate-700"
+          >SKU</label
+        >
         <input
           type="text"
           formControlName="sku"
@@ -48,22 +69,30 @@
 
       <!-- Nombre -->
       <div class="sm:col-span-2">
-        <label class="mb-1.5 block text-sm font-medium text-slate-700">Nombre *</label>
+        <label class="mb-1.5 block text-sm font-medium text-slate-700"
+          >Nombre *</label
+        >
         <input
           type="text"
           formControlName="name"
           placeholder="Nombre del producto"
           class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500 disabled:bg-slate-50 disabled:text-slate-500"
-          [class.border-red-400]="form.controls.name.touched && form.controls.name.invalid"
+          [class.border-red-400]="
+            form.controls.name.touched && form.controls.name.invalid
+          "
         />
-        @if (form.controls.name.touched && form.controls.name.hasError('required')) {
+        @if (
+          form.controls.name.touched && form.controls.name.hasError("required")
+        ) {
           <p class="mt-1 text-xs text-red-600">El nombre es obligatorio</p>
         }
       </div>
 
       <!-- Descripción -->
       <div class="sm:col-span-2">
-        <label class="mb-1.5 block text-sm font-medium text-slate-700">Descripción</label>
+        <label class="mb-1.5 block text-sm font-medium text-slate-700"
+          >Descripción</label
+        >
         <textarea
           formControlName="description"
           rows="2"
@@ -74,7 +103,9 @@
 
       <!-- Categoría -->
       <div>
-        <label class="mb-1.5 block text-sm font-medium text-slate-700">Categoría</label>
+        <label class="mb-1.5 block text-sm font-medium text-slate-700"
+          >Categoría</label
+        >
         <div class="flex items-center gap-2">
           <select
             formControlName="categoryId"
@@ -101,7 +132,9 @@
 
       <!-- Unidad de medida -->
       <div>
-        <label class="mb-1.5 block text-sm font-medium text-slate-700">Unidad de medida</label>
+        <label class="mb-1.5 block text-sm font-medium text-slate-700"
+          >Unidad de medida</label
+        >
         <div class="flex items-center gap-2">
           <select
             formControlName="unitMeasureId"
@@ -109,7 +142,9 @@
           >
             <option value="">Sin unidad</option>
             @for (unit of unitMeasures(); track unit.id) {
-              <option [value]="unit.id">{{ unit.code ? unit.code + ' · ' + unit.name : unit.name }}</option>
+              <option [value]="unit.id">
+                {{ unit.code ? unit.code + " · " + unit.name : unit.name }}
+              </option>
             }
           </select>
           @if (!isView) {
@@ -128,7 +163,9 @@
 
       <!-- Precio compra -->
       <div>
-        <label class="mb-1.5 block text-sm font-medium text-slate-700">Precio de compra (Q) *</label>
+        <label class="mb-1.5 block text-sm font-medium text-slate-700"
+          >Precio de compra (Q) *</label
+        >
         <input
           type="number"
           step="0.01"
@@ -138,16 +175,24 @@
           (keydown)="blockInvalidNumberKey($event)"
           (focus)="selectOnFocus($event)"
           class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500 disabled:bg-slate-50 disabled:text-slate-500"
-          [class.border-red-400]="form.controls.purchasePrice.touched && form.controls.purchasePrice.invalid"
+          [class.border-red-400]="
+            form.controls.purchasePrice.touched &&
+            form.controls.purchasePrice.invalid
+          "
         />
-        @if (form.controls.purchasePrice.touched && form.controls.purchasePrice.hasError('min')) {
+        @if (
+          form.controls.purchasePrice.touched &&
+          form.controls.purchasePrice.hasError("min")
+        ) {
           <p class="mt-1 text-xs text-red-600">No puede ser negativo</p>
         }
       </div>
 
       <!-- Precio venta -->
       <div>
-        <label class="mb-1.5 block text-sm font-medium text-slate-700">Precio de venta (Q) *</label>
+        <label class="mb-1.5 block text-sm font-medium text-slate-700"
+          >Precio de venta (Q) *</label
+        >
         <input
           type="number"
           step="0.01"
@@ -157,16 +202,23 @@
           (keydown)="blockInvalidNumberKey($event)"
           (focus)="selectOnFocus($event)"
           class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500 disabled:bg-slate-50 disabled:text-slate-500"
-          [class.border-red-400]="form.controls.salePrice.touched && form.controls.salePrice.invalid"
+          [class.border-red-400]="
+            form.controls.salePrice.touched && form.controls.salePrice.invalid
+          "
         />
-        @if (form.controls.salePrice.touched && form.controls.salePrice.hasError('min')) {
+        @if (
+          form.controls.salePrice.touched &&
+          form.controls.salePrice.hasError("min")
+        ) {
           <p class="mt-1 text-xs text-red-600">No puede ser negativo</p>
         }
       </div>
 
       <!-- Stock mínimo -->
       <div>
-        <label class="mb-1.5 block text-sm font-medium text-slate-700">Stock mínimo *</label>
+        <label class="mb-1.5 block text-sm font-medium text-slate-700"
+          >Stock mínimo *</label
+        >
         <input
           type="number"
           step="0.001"
@@ -176,47 +228,172 @@
           (keydown)="blockInvalidNumberKey($event)"
           (focus)="selectOnFocus($event)"
           class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500 disabled:bg-slate-50 disabled:text-slate-500"
-          [class.border-red-400]="form.controls.minStock.touched && form.controls.minStock.invalid"
+          [class.border-red-400]="
+            form.controls.minStock.touched && form.controls.minStock.invalid
+          "
         />
-        @if (form.controls.minStock.touched && form.controls.minStock.hasError('min')) {
+        @if (
+          form.controls.minStock.touched &&
+          form.controls.minStock.hasError("min")
+        ) {
           <p class="mt-1 text-xs text-red-600">No puede ser negativo</p>
         }
       </div>
 
       <!-- Stock inicial (crear) / Stock actual (editar/ver) -->
-      <div>
-        <label class="mb-1.5 block text-sm font-medium text-slate-700">
-          {{ isCreate ? 'Stock inicial' : 'Stock actual' }}
-          @if (isCreate) { <span>*</span> }
+      @if (!tracksExpirationEnabled() || !isCreate) {
+        <div>
+          <label class="mb-1.5 block text-sm font-medium text-slate-700">
+            {{ isCreate ? "Stock inicial" : "Stock actual" }}
+            @if (isCreate && !tracksExpirationEnabled()) {
+              <span>*</span>
+            }
+          </label>
+          <input
+            type="number"
+            step="0.001"
+            min="0"
+            inputmode="decimal"
+            formControlName="currentStock"
+            (keydown)="blockInvalidNumberKey($event)"
+            (focus)="selectOnFocus($event)"
+            class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500 disabled:bg-slate-50 disabled:text-slate-500"
+            [class.border-red-400]="
+              form.controls.currentStock.touched &&
+              form.controls.currentStock.invalid
+            "
+          />
+          @if (isCreate && !tracksExpirationEnabled()) {
+            <p class="mt-1 text-xs text-slate-400">
+              Si ingresas stock inicial, se registrará automáticamente un
+              movimiento de inventario.
+            </p>
+          } @else if (!isCreate) {
+            <p class="mt-1 text-xs text-slate-400">
+              El stock se modifica desde el módulo de Inventario.
+            </p>
+          }
+        </div>
+      }
+
+      <!-- Control de vencimiento -->
+      <div class="sm:col-span-2">
+        <label class="flex cursor-pointer items-center gap-3">
+          <input
+            type="checkbox"
+            formControlName="tracksExpiration"
+            class="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+          />
+          <span class="text-sm font-medium text-slate-700"
+            >¿Tiene vencimiento?</span
+          >
         </label>
-        <input
-          type="number"
-          step="0.001"
-          min="0"
-          inputmode="decimal"
-          formControlName="currentStock"
-          (keydown)="blockInvalidNumberKey($event)"
-          (focus)="selectOnFocus($event)"
-          class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500 disabled:bg-slate-50 disabled:text-slate-500"
-          [class.border-red-400]="form.controls.currentStock.touched && form.controls.currentStock.invalid"
-        />
-        @if (isCreate) {
-          <p class="mt-1 text-xs text-slate-400">
-            Si ingresas stock inicial, se registrará automáticamente un movimiento de inventario.
+        @if (isView && data.product?.tracksExpiration) {
+          <p class="mt-1 text-xs text-slate-500">
+            Stock vendible:
+            {{ data.product?.sellableStock ?? data.product?.currentStock }}
           </p>
-        } @else {
-          <p class="mt-1 text-xs text-slate-400">El stock se modifica desde el módulo de Inventario.</p>
-        }
-        @if (isCreate && form.controls.currentStock.touched && form.controls.currentStock.hasError('min')) {
-          <p class="mt-1 text-xs text-red-600">No puede ser negativo</p>
         }
       </div>
+
+      <!-- Lotes iniciales (solo crear con vencimiento) -->
+      @if (isCreate && tracksExpirationEnabled()) {
+        <div class="sm:col-span-2">
+          <div class="mb-2 flex items-center justify-between">
+            <label class="text-sm font-medium text-slate-700"
+              >Lotes iniciales *</label
+            >
+            <button
+              type="button"
+              (click)="addInitialLot()"
+              class="rounded-lg border border-blue-200 bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-600 transition hover:bg-blue-100"
+            >
+              + Agregar lote
+            </button>
+          </div>
+          <div class="space-y-3">
+            @for (lot of initialLots(); track $index; let i = $index) {
+              <div
+                class="grid grid-cols-1 gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3 sm:grid-cols-4"
+              >
+                <div>
+                  <label class="mb-1 block text-xs font-medium text-slate-600"
+                    >Cantidad</label
+                  >
+                  <input
+                    type="number"
+                    step="0.001"
+                    min="0.001"
+                    [value]="lot.quantity"
+                    (input)="
+                      updateInitialLot(i, 'quantity', $any($event.target).value)
+                    "
+                    class="w-full rounded-lg border border-slate-300 px-2.5 py-2 text-sm outline-none focus:border-blue-500"
+                  />
+                </div>
+                <div>
+                  <label class="mb-1 block text-xs font-medium text-slate-600"
+                    >Vence *</label
+                  >
+                  <input
+                    type="date"
+                    [value]="lot.expirationDate"
+                    (input)="
+                      updateInitialLot(
+                        i,
+                        'expirationDate',
+                        $any($event.target).value
+                      )
+                    "
+                    class="w-full rounded-lg border border-slate-300 px-2.5 py-2 text-sm outline-none focus:border-blue-500"
+                  />
+                </div>
+                <div>
+                  <label class="mb-1 block text-xs font-medium text-slate-600"
+                    >Código lote</label
+                  >
+                  <input
+                    type="text"
+                    [value]="lot.lotCode"
+                    (input)="
+                      updateInitialLot(i, 'lotCode', $any($event.target).value)
+                    "
+                    placeholder="Opcional"
+                    class="w-full rounded-lg border border-slate-300 px-2.5 py-2 text-sm outline-none focus:border-blue-500"
+                  />
+                </div>
+                <div class="flex items-end">
+                  @if (initialLots().length > 1) {
+                    <button
+                      type="button"
+                      (click)="removeInitialLot(i)"
+                      class="rounded-lg px-2 py-2 text-xs font-medium text-red-600 transition hover:bg-red-50"
+                    >
+                      Quitar
+                    </button>
+                  }
+                </div>
+              </div>
+            }
+          </div>
+          <p class="mt-2 text-xs text-slate-400">
+            Cada lote requiere cantidad y fecha de vencimiento. El código de
+            lote es opcional.
+          </p>
+        </div>
+      }
 
       <!-- Activo -->
       <div class="sm:col-span-2">
         <label class="flex cursor-pointer items-center gap-3">
-          <input type="checkbox" formControlName="active" class="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500" />
-          <span class="text-sm font-medium text-slate-700">Producto activo</span>
+          <input
+            type="checkbox"
+            formControlName="active"
+            class="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+          />
+          <span class="text-sm font-medium text-slate-700"
+            >Producto activo</span
+          >
         </label>
       </div>
     </div>
@@ -228,7 +405,7 @@
         (click)="cancel()"
         class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-100"
       >
-        {{ isView ? 'Cerrar' : 'Cancelar' }}
+        {{ isView ? "Cerrar" : "Cancelar" }}
       </button>
       @if (!isView) {
         <button
@@ -237,7 +414,9 @@
           class="flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 py-2 text-sm font-medium text-white transition hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-70"
         >
           @if (saving()) {
-            <span class="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white"></span>
+            <span
+              class="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white"
+            ></span>
             <span>Guardando...</span>
           } @else {
             <span>Guardar</span>

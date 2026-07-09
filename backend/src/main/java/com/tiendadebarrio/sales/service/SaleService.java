@@ -7,6 +7,7 @@ import com.tiendadebarrio.common.exception.ApiException;
 import com.tiendadebarrio.customers.entity.Customer;
 import com.tiendadebarrio.customers.repository.CustomerRepository;
 import com.tiendadebarrio.inventory.service.InventoryService;
+import com.tiendadebarrio.inventory.service.ProductLotService;
 import com.tiendadebarrio.products.entity.Product;
 import com.tiendadebarrio.products.repository.ProductRepository;
 import com.tiendadebarrio.sales.dto.SaleCreateRequest;
@@ -48,6 +49,7 @@ public class SaleService {
     private final CustomerRepository customerRepository;
     private final AppUserRepository appUserRepository;
     private final InventoryService inventoryService;
+    private final ProductLotService productLotService;
     private final CashService cashService;
     private final SaleMapper saleMapper;
     private final AuditService auditService;
@@ -123,13 +125,15 @@ public class SaleService {
         for (SaleItemRequest itemRequest : request.getItems()) {
             Product product = findUsableProduct(itemRequest.getProductId());
             BigDecimal quantity = itemRequest.getQuantity();
+            BigDecimal available = productLotService.getSellableQuantity(product);
 
-            if (product.getCurrentStock().compareTo(quantity) < 0) {
+            if (available.compareTo(quantity) < 0) {
+                String stockLabel = product.isTracksExpiration() ? "vendible (no vencido)" : "disponible";
                 throw new ApiException(
                         "Stock insuficiente para el producto " + product.getName()
-                                + ". Disponible: " + product.getCurrentStock(),
+                                + ". " + capitalize(stockLabel) + ": " + available,
                         HttpStatus.BAD_REQUEST,
-                        "INSUFFICIENT_STOCK"
+                        product.isTracksExpiration() ? "INSUFFICIENT_SELLABLE_STOCK" : "INSUFFICIENT_STOCK"
                 );
             }
 
@@ -163,6 +167,7 @@ public class SaleService {
                     item.getProduct(),
                     item.getQuantity(),
                     saved.getId(),
+                    item.getId(),
                     "Venta");
         }
 
@@ -200,11 +205,34 @@ public class SaleService {
 
         // Devolución de stock y movimientos tipo SALE_CANCEL.
         for (SaleItem item : sale.getItems()) {
-            inventoryService.registerSaleCancellationMovement(
-                    item.getProduct(),
-                    item.getQuantity(),
-                    sale.getId(),
-                    "Anulación de venta");
+            Product product = item.getProduct();
+            if (product.isTracksExpiration()) {
+                BigDecimal previousStock = product.getCurrentStock();
+                productLotService.restoreSaleItemAllocations(item.getId());
+                Product refreshed = productRepository.findByIdAndDeletedFalse(product.getId())
+                        .orElseThrow(() -> new ApiException(
+                                "El producto indicado no existe",
+                                HttpStatus.BAD_REQUEST,
+                                "PRODUCT_NOT_FOUND"
+                        ));
+                inventoryService.recordMovementAfterStockChange(
+                        refreshed,
+                        com.tiendadebarrio.inventory.entity.InventoryMovementType.SALE_CANCEL,
+                        item.getQuantity(),
+                        previousStock,
+                        refreshed.getCurrentStock(),
+                        null,
+                        null,
+                        sale.getId(),
+                        null,
+                        "Anulación de venta");
+            } else {
+                inventoryService.registerSaleCancellationMovement(
+                        product,
+                        item.getQuantity(),
+                        sale.getId(),
+                        "Anulación de venta");
+            }
         }
 
         // Egreso en caja por anulación.
@@ -264,6 +292,13 @@ public class SaleService {
             );
         }
         return product;
+    }
+
+    private String capitalize(String value) {
+        if (value == null || value.isEmpty()) {
+            return value;
+        }
+        return Character.toUpperCase(value.charAt(0)) + value.substring(1);
     }
 
     private Map<String, Object> auditSnapshot(Sale sale) {

@@ -40,4 +40,6 @@ public class ProductUpdateRequest {
     private BigDecimal minStock;
 
     private Boolean active;
+
+    private Boolean tracksExpiration;
 }

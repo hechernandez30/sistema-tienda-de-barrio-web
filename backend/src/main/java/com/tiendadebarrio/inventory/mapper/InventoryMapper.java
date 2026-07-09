@@ -30,20 +30,23 @@ public class InventoryMapper {
                 .build();
     }
 
-    public ProductStockResponse toStockResponse(Product product) {
+    public ProductStockResponse toStockResponse(Product product, BigDecimal sellableStock) {
         return ProductStockResponse.builder()
                 .productId(product.getId())
                 .barcode(product.getBarcode())
                 .name(product.getName())
                 .currentStock(product.getCurrentStock())
+                .sellableStock(sellableStock)
                 .minStock(product.getMinStock())
+                .tracksExpiration(product.isTracksExpiration())
                 .unitMeasureName(product.getUnitMeasure() != null ? product.getUnitMeasure().getName() : null)
                 .active(product.isActive())
                 .build();
     }
 
-    public LowStockResponse toLowStockResponse(Product product) {
-        BigDecimal missing = product.getMinStock().subtract(product.getCurrentStock());
+    public LowStockResponse toLowStockResponse(Product product, BigDecimal sellableStock) {
+        BigDecimal referenceStock = product.isTracksExpiration() ? sellableStock : product.getCurrentStock();
+        BigDecimal missing = product.getMinStock().subtract(referenceStock);
         if (missing.signum() < 0) {
             missing = BigDecimal.ZERO;
         }

@@ -41,6 +41,9 @@ class InventoryServiceTest {
     @Mock
     private AuditService auditService;
 
+    @Mock
+    private ProductLotService productLotService;
+
     private InventoryService inventoryService;
 
     private UUID productId;
@@ -51,7 +54,8 @@ class InventoryServiceTest {
                 productRepository,
                 inventoryMovementRepository,
                 new InventoryMapper(),
-                auditService);
+                auditService,
+                productLotService);
         productId = UUID.randomUUID();
     }
 

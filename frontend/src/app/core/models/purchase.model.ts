@@ -32,6 +32,8 @@ export interface PurchaseItemDetail {
   quantity: number;
   unitCost: number;
   lineTotal: number;
+  expirationDate?: string | null;
+  lotCode?: string | null;
 }
 
 export interface PurchaseSupplierSummary {
@@ -61,6 +63,8 @@ export interface PurchaseItemRequest {
   productId: string;
   quantity: number;
   unitCost: number;
+  expirationDate?: string | null;
+  lotCode?: string | null;
 }
 
 export interface PurchaseCreateRequest {

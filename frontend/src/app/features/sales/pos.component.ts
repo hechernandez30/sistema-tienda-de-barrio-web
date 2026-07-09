@@ -99,7 +99,9 @@ export class PosComponent implements OnInit, AfterViewInit {
   readonly distinctCount = computed(() => this.cart().length);
   readonly totalUnits = computed(() => this.cart().reduce((acc, i) => acc + i.quantity, 0));
   readonly subtotal = computed(() => this.cart().reduce((acc, i) => acc + i.quantity * i.salePrice, 0));
-  readonly hasStockIssue = computed(() => this.cart().some((i) => i.quantity > i.currentStock || i.quantity <= 0));
+  readonly hasStockIssue = computed(() =>
+    this.cart().some((i) => i.quantity > i.availableStock || i.quantity <= 0),
+  );
   readonly canRegister = computed(
     () => this.cashOpen() && this.cart().length > 0 && !this.hasStockIssue() && !this.registering(),
   );
@@ -221,16 +223,17 @@ export class PosComponent implements OnInit, AfterViewInit {
   }
 
   private addToCart(product: ProductPos): void {
-    if (Number(product.currentStock) <= 0) {
-      this.snackBar.open(`"${product.name}" no tiene stock disponible`, 'Cerrar', { duration: 3500 });
+    const available = this.sellableStock(product);
+    if (available <= 0) {
+      this.snackBar.open(`"${product.name}" no tiene stock vendible disponible`, 'Cerrar', { duration: 3500 });
       this.resetScan();
       return;
     }
 
     const existing = this.cart().find((i) => i.productId === product.id);
     if (existing) {
-      if (existing.quantity + 1 > existing.currentStock) {
-        this.snackBar.open(`Stock insuficiente para "${product.name}"`, 'Cerrar', { duration: 3500 });
+      if (existing.quantity + 1 > existing.availableStock) {
+        this.snackBar.open(`Stock vendible insuficiente para "${product.name}"`, 'Cerrar', { duration: 3500 });
       } else {
         this.cart.update((items) =>
           items.map((i) => (i.productId === product.id ? { ...i, quantity: i.quantity + 1 } : i)),
@@ -244,12 +247,17 @@ export class PosComponent implements OnInit, AfterViewInit {
           barcode: product.barcode,
           productName: product.name,
           salePrice: Number(product.salePrice ?? 0),
-          currentStock: Number(product.currentStock ?? 0),
+          availableStock: available,
+          tracksExpiration: !!product.tracksExpiration,
           quantity: 1,
         },
       ]);
     }
     this.resetScan();
+  }
+
+  private sellableStock(product: ProductPos): number {
+    return Number(product.sellableStock ?? product.currentStock ?? 0);
   }
 
   private resetScan(): void {
@@ -278,7 +286,7 @@ export class PosComponent implements OnInit, AfterViewInit {
   increment(index: number): void {
     this.cart.update((items) =>
       items.map((item, i) =>
-        i === index && item.quantity < item.currentStock ? { ...item, quantity: item.quantity + 1 } : item,
+        i === index && item.quantity < item.availableStock ? { ...item, quantity: item.quantity + 1 } : item,
       ),
     );
   }
@@ -295,7 +303,7 @@ export class PosComponent implements OnInit, AfterViewInit {
   }
 
   lineExceedsStock(item: PosCartItem): boolean {
-    return item.quantity > item.currentStock;
+    return item.quantity > item.availableStock;
   }
 
   // ---------------------------------------------------------------
@@ -392,8 +400,8 @@ export class PosComponent implements OnInit, AfterViewInit {
     if (code === 'NO_OPEN_CASH_SESSION') {
       return 'No hay caja abierta. Abre caja antes de vender.';
     }
-    if (code === 'INSUFFICIENT_STOCK') {
-      return 'No hay stock suficiente para uno o más productos.';
+    if (code === 'INSUFFICIENT_STOCK' || code === 'INSUFFICIENT_SELLABLE_STOCK') {
+      return 'No hay stock vendible suficiente para uno o más productos.';
     }
     return err?.error?.message ?? 'No se pudo registrar la venta. Intenta nuevamente.';
   }

@@ -81,6 +81,7 @@ export interface PosCartItem {
   barcode: string;
   productName: string;
   salePrice: number;
-  currentStock: number;
+  availableStock: number;
+  tracksExpiration?: boolean;
   quantity: number;
 }
