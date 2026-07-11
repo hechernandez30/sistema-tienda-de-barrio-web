@@ -105,6 +105,8 @@ public interface ReportRepository extends Repository<Sale, UUID> {
                 CASE WHEN c IS NULL THEN 'Sin categoría' ELSE c.name END,
                 COALESCE(SUM(si.quantity), 0),
                 COALESCE(SUM(si.lineTotal), 0),
+                COALESCE(SUM(si.quantity * p.purchasePrice), 0),
+                COALESCE(SUM(si.lineTotal), 0) - COALESCE(SUM(si.quantity * p.purchasePrice), 0),
                 COUNT(si))
             FROM SaleItem si
             JOIN si.product p
@@ -113,12 +115,16 @@ public interface ReportRepository extends Repository<Sale, UUID> {
             WHERE s.deleted = false
               AND s.status = :status
               AND s.saleDate BETWEEN :from AND :to
+              AND (:categoryId IS NULL OR c.id = :categoryId)
+              AND (:uncategorizedOnly = false OR c IS NULL)
             GROUP BY c.id, c.name
             ORDER BY SUM(si.lineTotal) DESC
             """)
     List<SalesByCategoryResponse> salesByCategory(@Param("status") SaleStatus status,
                                                   @Param("from") LocalDateTime from,
-                                                  @Param("to") LocalDateTime to);
+                                                  @Param("to") LocalDateTime to,
+                                                  @Param("categoryId") UUID categoryId,
+                                                  @Param("uncategorizedOnly") boolean uncategorizedOnly);
 
     // ------------------------------------------------------------------
     // Inventario

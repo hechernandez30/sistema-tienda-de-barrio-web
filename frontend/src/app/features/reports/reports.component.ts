@@ -2,10 +2,13 @@ import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { DatePipe, DecimalPipe } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { forkJoin } from 'rxjs';
+import { forkJoin, of, Observable } from 'rxjs';
+import { catchError } from 'rxjs/operators';
 
 import { DateRange, ReportService } from '../../core/services/report.service';
 import { InventoryService } from '../../core/services/inventory.service';
+import { CatalogService } from '../../core/services/catalog.service';
+import { Category } from '../../core/models/catalog.model';
 import { ProductLot } from '../../core/models/inventory.model';
 import {
   CashByCategoryReport,
@@ -34,6 +37,7 @@ import {
 export class ReportsComponent implements OnInit {
   private readonly reportService = inject(ReportService);
   private readonly inventoryService = inject(InventoryService);
+  private readonly catalogService = inject(CatalogService);
   private readonly fb = inject(FormBuilder);
   private readonly snackBar = inject(MatSnackBar);
 
@@ -44,6 +48,12 @@ export class ReportsComponent implements OnInit {
     from: this.today(),
     to: this.today(),
   });
+
+  /** Filtro exclusivo del reporte por categoría de producto (catálogo product_categories). */
+  readonly categoryFilter = signal<string>('ALL');
+
+  readonly productCategories = signal<Category[]>([]);
+  readonly loadingCategoryReport = signal(false);
 
   readonly loading = signal(false);
   readonly errored = signal(false);
@@ -75,6 +85,13 @@ export class ReportsComponent implements OnInit {
   readonly maxCategoryAmount = computed(() =>
     Math.max(0, ...this.salesByCategory().map((c) => c.totalAmount)),
   );
+  readonly selectedCategorySummary = computed(() => {
+    const rows = this.salesByCategory();
+    if (this.categoryFilter() === 'ALL' || rows.length !== 1) {
+      return null;
+    }
+    return rows[0];
+  });
   readonly maxTopProductQty = computed(() =>
     Math.max(0, ...this.topProducts().map((p) => p.quantitySold)),
   );
@@ -83,6 +100,11 @@ export class ReportsComponent implements OnInit {
   );
 
   ngOnInit(): void {
+    this.catalogService.listCategories().subscribe({
+      next: (categories) => this.productCategories.set(categories),
+      error: () =>
+        this.snackBar.open('No se pudo cargar el catálogo de categorías', 'Cerrar', { duration: 4000 }),
+    });
     this.loadAll();
   }
 
@@ -124,6 +146,41 @@ export class ReportsComponent implements OnInit {
     this.loadAll();
   }
 
+  onCategoryFilterChange(value: string): void {
+    this.categoryFilter.set(value);
+    this.loadCategoryReport();
+  }
+
+  private categoryReportFilters() {
+    const value = this.categoryFilter();
+    if (value === 'ALL') {
+      return {};
+    }
+    if (value === 'NONE') {
+      return { uncategorizedOnly: true };
+    }
+    return { categoryId: value };
+  }
+
+  loadCategoryReport(): void {
+    const range: DateRange = {
+      from: this.filterForm.controls.from.value,
+      to: this.filterForm.controls.to.value,
+    };
+
+    this.loadingCategoryReport.set(true);
+    this.reportService.salesByCategory(range, this.categoryReportFilters()).subscribe({
+      next: (rows) => {
+        this.salesByCategory.set(rows);
+        this.loadingCategoryReport.set(false);
+      },
+      error: () => {
+        this.loadingCategoryReport.set(false);
+        this.snackBar.open('No se pudo cargar el reporte por categoría', 'Cerrar', { duration: 4000 });
+      },
+    });
+  }
+
   percent(value: number, max: number): number {
     if (!max || max <= 0) {
       return 0;
@@ -148,11 +205,17 @@ export class ReportsComponent implements OnInit {
     this.loading.set(true);
     this.errored.set(false);
 
+    const withFallback = <T>(request$: Observable<T>, fallback: T) =>
+      request$.pipe(catchError(() => of(fallback)));
+
     forkJoin({
       salesSummary: this.reportService.salesSummary(range),
       salesByPayment: this.reportService.salesByPaymentMethod(range),
       dailySales: this.reportService.dailySales(range),
-      salesByCategory: this.reportService.salesByCategory(range),
+      salesByCategory: withFallback(
+        this.reportService.salesByCategory(range, this.categoryReportFilters()),
+        [],
+      ),
       topProducts: this.reportService.topProducts(range, 10),
       lowStock: this.reportService.lowStock(),
       inventorySummary: this.reportService.inventorySummary(),
@@ -161,8 +224,8 @@ export class ReportsComponent implements OnInit {
       cashSummary: this.reportService.cashSummary(range),
       cashByCategory: this.reportService.cashByCategory(range),
       estimatedProfit: this.reportService.estimatedProfit(range),
-      expiringLots: this.inventoryService.expiringLots(this.EXPIRING_DAYS),
-      expiredLots: this.inventoryService.expiredLots(),
+      expiringLots: withFallback(this.inventoryService.expiringLots(this.EXPIRING_DAYS), []),
+      expiredLots: withFallback(this.inventoryService.expiredLots(), []),
     }).subscribe({
       next: (data) => {
         this.salesSummary.set(data.salesSummary);

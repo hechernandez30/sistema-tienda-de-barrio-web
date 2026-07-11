@@ -13,6 +13,7 @@ import {
   PurchasesBySupplierReport,
   PurchasesSummaryReport,
   SalesByCategoryReport,
+  SalesByCategoryFilters,
   SalesByPaymentMethodReport,
   SalesSummaryReport,
   TopProductReport,
@@ -50,10 +51,18 @@ export class ReportService {
     });
   }
 
-  salesByCategory(range: DateRange): Observable<SalesByCategoryReport[]> {
-    return this.http.get<SalesByCategoryReport[]>(`${this.baseUrl}/sales-by-category`, {
-      params: this.rangeParams(range),
-    });
+  salesByCategory(
+    range: DateRange,
+    filters: SalesByCategoryFilters = {},
+  ): Observable<SalesByCategoryReport[]> {
+    let params = this.rangeParams(range);
+    if (filters.categoryId) {
+      params = params.set('categoryId', filters.categoryId);
+    }
+    if (filters.uncategorizedOnly) {
+      params = params.set('uncategorizedOnly', 'true');
+    }
+    return this.http.get<SalesByCategoryReport[]>(`${this.baseUrl}/sales-by-category`, { params });
   }
 
   topProducts(range: DateRange, limit = 10): Observable<TopProductReport[]> {

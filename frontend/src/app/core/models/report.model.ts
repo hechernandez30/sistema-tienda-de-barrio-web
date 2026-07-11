@@ -12,6 +12,11 @@ export const MOVEMENT_TYPE_LABELS: Record<CashMovementType, string> = {
   EXPENSE: 'Egreso',
 };
 
+export interface SalesByCategoryFilters {
+  categoryId?: string | null;
+  uncategorizedOnly?: boolean;
+}
+
 export interface SalesSummaryReport {
   fromDate?: string | null;
   toDate?: string | null;
@@ -98,6 +103,8 @@ export interface SalesByCategoryReport {
   categoryName: string;
   quantitySold: number;
   totalAmount: number;
+  estimatedCost: number;
+  estimatedGrossProfit: number;
   lineCount: number;
 }
 

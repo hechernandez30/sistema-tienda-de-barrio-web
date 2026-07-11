@@ -24,6 +24,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/reports")
@@ -57,8 +58,10 @@ public class ReportController {
     @GetMapping("/sales-by-category")
     public ResponseEntity<List<SalesByCategoryResponse>> salesByCategory(
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
-        return ResponseEntity.ok(reportService.salesByCategory(from, to));
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
+            @RequestParam(required = false) UUID categoryId,
+            @RequestParam(required = false, defaultValue = "false") boolean uncategorizedOnly) {
+        return ResponseEntity.ok(reportService.salesByCategory(from, to, categoryId, uncategorizedOnly));
     }
 
     @GetMapping("/top-products")

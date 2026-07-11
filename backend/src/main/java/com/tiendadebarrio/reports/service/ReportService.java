@@ -17,6 +17,8 @@ import com.tiendadebarrio.reports.dto.SalesByPaymentMethodResponse;
 import com.tiendadebarrio.reports.dto.SalesSummaryResponse;
 import com.tiendadebarrio.reports.dto.TopProductResponse;
 import com.tiendadebarrio.reports.repository.ReportRepository;
+import com.tiendadebarrio.products.entity.ProductCategory;
+import com.tiendadebarrio.products.repository.ProductCategoryRepository;
 import com.tiendadebarrio.sales.entity.SaleStatus;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
@@ -28,9 +30,14 @@ import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -43,6 +50,7 @@ public class ReportService {
     private static final int MAX_LIMIT = 100;
 
     private final ReportRepository reportRepository;
+    private final ProductCategoryRepository productCategoryRepository;
     private final AuditService auditService;
 
     // ------------------------------------------------------------------
@@ -101,17 +109,92 @@ public class ReportService {
     }
 
     @Transactional(readOnly = true)
-    public List<SalesByCategoryResponse> salesByCategory(LocalDate from, LocalDate to) {
+    public List<SalesByCategoryResponse> salesByCategory(
+            LocalDate from,
+            LocalDate to,
+            UUID categoryId,
+            boolean uncategorizedOnly) {
         Range range = resolveRange(from, to);
-        return reportRepository.salesByCategory(SaleStatus.COMPLETED, range.start(), range.end())
+        List<SalesByCategoryResponse> sales = reportRepository
+                .salesByCategory(
+                        SaleStatus.COMPLETED,
+                        range.start(),
+                        range.end(),
+                        categoryId,
+                        uncategorizedOnly)
                 .stream()
-                .map(row -> new SalesByCategoryResponse(
-                        row.getCategoryId(),
-                        row.getCategoryName(),
-                        row.getQuantitySold(),
-                        money(row.getTotalAmount()),
-                        row.getLineCount()))
+                .map(this::normalizeCategoryRow)
                 .toList();
+
+        if (uncategorizedOnly) {
+            if (sales.isEmpty()) {
+                return List.of(emptyCategoryRow(null, "Sin categoría"));
+            }
+            return sales;
+        }
+
+        if (categoryId != null) {
+            if (sales.isEmpty()) {
+                ProductCategory category = productCategoryRepository.findByIdAndDeletedFalse(categoryId)
+                        .orElseThrow(() -> new com.tiendadebarrio.common.exception.ApiException(
+                                "La categoría indicada no existe",
+                                org.springframework.http.HttpStatus.BAD_REQUEST,
+                                "CATEGORY_NOT_FOUND"));
+                return List.of(emptyCategoryRow(category.getId(), category.getName()));
+            }
+            return sales;
+        }
+
+        return mergeWithProductCatalog(sales);
+    }
+
+    private List<SalesByCategoryResponse> mergeWithProductCatalog(List<SalesByCategoryResponse> sales) {
+        Map<UUID, SalesByCategoryResponse> salesByCategoryId = sales.stream()
+                .filter(row -> row.getCategoryId() != null)
+                .collect(Collectors.toMap(SalesByCategoryResponse::getCategoryId, Function.identity(), (a, b) -> a));
+
+        List<SalesByCategoryResponse> merged = new ArrayList<>();
+        for (ProductCategory category : productCategoryRepository.findByDeletedFalseAndActiveTrueOrderByNameAsc()) {
+            SalesByCategoryResponse row = salesByCategoryId.get(category.getId());
+            merged.add(row != null
+                    ? row
+                    : emptyCategoryRow(category.getId(), category.getName()));
+        }
+
+        sales.stream()
+                .filter(row -> row.getCategoryId() == null)
+                .findFirst()
+                .ifPresent(merged::add);
+
+        merged.sort(Comparator
+                .comparing(SalesByCategoryResponse::getTotalAmount).reversed()
+                .thenComparing(SalesByCategoryResponse::getCategoryName, String.CASE_INSENSITIVE_ORDER));
+
+        return merged;
+    }
+
+    private SalesByCategoryResponse normalizeCategoryRow(SalesByCategoryResponse row) {
+        BigDecimal totalAmount = money(row.getTotalAmount());
+        BigDecimal estimatedCost = money(row.getEstimatedCost());
+        return new SalesByCategoryResponse(
+                row.getCategoryId(),
+                row.getCategoryName(),
+                row.getQuantitySold(),
+                totalAmount,
+                estimatedCost,
+                totalAmount.subtract(estimatedCost),
+                row.getLineCount());
+    }
+
+    private SalesByCategoryResponse emptyCategoryRow(UUID categoryId, String categoryName) {
+        return new SalesByCategoryResponse(
+                categoryId,
+                categoryName,
+                BigDecimal.ZERO.setScale(3, RoundingMode.HALF_UP),
+                zero(),
+                zero(),
+                zero(),
+                0L);
     }
 
     // ------------------------------------------------------------------

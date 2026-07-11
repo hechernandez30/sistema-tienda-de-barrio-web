@@ -186,53 +186,110 @@
 
     <!-- Ventas por categoría de producto -->
     <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-      <h2 class="mb-1 flex items-center gap-2 text-sm font-semibold text-slate-800">
-        <span class="material-icons !text-[20px] text-violet-500">sell</span>
-        Ventas por categoría de producto
-      </h2>
-      <p class="mb-4 text-xs text-slate-400">
-        Ingresos por categoría (Snacks, Bebidas, etc.) en el rango de fechas seleccionado. Usa Hoy, Esta semana o Este mes para distintos períodos.
-      </p>
-      @if (salesByCategory().length === 0) {
-        <p class="py-8 text-center text-sm text-slate-400">Sin ventas por categoría en el rango seleccionado.</p>
+      <div class="mb-4 flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <h2 class="mb-1 flex items-center gap-2 text-sm font-semibold text-slate-800">
+            <span class="material-icons !text-[20px] text-violet-500">sell</span>
+            Ingresos por categoría de producto
+          </h2>
+          <p class="text-xs text-slate-400">
+            Categorías del catálogo de productos (las mismas del formulario Nuevo producto). El rango de fechas es el de arriba.
+            La ganancia es estimada según el precio de compra actual de cada producto.
+          </p>
+        </div>
+        <div class="min-w-[220px]">
+          <label class="mb-1 block text-xs font-medium text-slate-500">Filtrar categoría</label>
+          <select
+            [value]="categoryFilter()"
+            (change)="onCategoryFilterChange($any($event.target).value)"
+            class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20"
+          >
+            <option value="ALL">Todas las categorías</option>
+            @for (category of productCategories(); track category.id) {
+              <option [value]="category.id">{{ category.name }}</option>
+            }
+            <option value="NONE">Sin categoría</option>
+          </select>
+        </div>
+      </div>
+
+      @if (loadingCategoryReport()) {
+        <p class="py-8 text-center text-sm text-slate-400">Actualizando reporte por categoría...</p>
       } @else {
-        <div class="space-y-3">
-          @for (row of salesByCategory(); track row.categoryName) {
-            <div>
-              <div class="mb-1 flex items-center justify-between text-sm">
-                <span class="font-medium text-slate-700">{{ row.categoryName }}</span>
-                <span class="text-slate-500">
-                  {{ row.quantitySold | number: '1.0-3' }} u. · Q {{ row.totalAmount | number: '1.2-2' }}
-                </span>
+        @if (selectedCategorySummary(); as summary) {
+          <div class="rounded-xl border border-violet-200 bg-violet-50 p-5">
+            <p class="text-xs font-medium uppercase tracking-wide text-violet-600">{{ summary.categoryName }}</p>
+            <div class="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-3">
+              <div>
+                <p class="text-xs text-violet-600">Ingresos</p>
+                <p class="mt-1 text-2xl font-bold text-violet-900">Q {{ summary.totalAmount | number: '1.2-2' }}</p>
               </div>
-              <div class="h-2.5 w-full overflow-hidden rounded-full bg-slate-100">
-                <div class="h-full rounded-full bg-violet-500 transition-all" [style.width.%]="percent(row.totalAmount, maxCategoryAmount())"></div>
+              <div>
+                <p class="text-xs text-violet-600">Costo estimado</p>
+                <p class="mt-1 text-2xl font-bold text-violet-900">Q {{ summary.estimatedCost | number: '1.2-2' }}</p>
+              </div>
+              <div>
+                <p class="text-xs text-violet-600">Ganancia estimada</p>
+                <p class="mt-1 text-2xl font-bold" [class]="summary.estimatedGrossProfit >= 0 ? 'text-emerald-700' : 'text-rose-700'">
+                  Q {{ summary.estimatedGrossProfit | number: '1.2-2' }}
+                </p>
               </div>
             </div>
+            <p class="mt-3 text-sm text-violet-700">
+              {{ summary.quantitySold | number: '1.0-3' }} unidades vendidas · {{ summary.lineCount | number }} línea(s) de venta
+            </p>
+          </div>
+        } @else if (salesByCategory().length === 0) {
+          <p class="py-8 text-center text-sm text-slate-400">Sin categorías en el catálogo o sin datos en el rango.</p>
+        } @else {
+        <div class="space-y-3">
+          @for (row of salesByCategory(); track row.categoryId ?? row.categoryName) {
+            @if (row.totalAmount > 0) {
+              <div>
+                <div class="mb-1 flex items-center justify-between text-sm">
+                  <span class="font-medium text-slate-700">{{ row.categoryName }}</span>
+                  <span class="text-slate-500">
+                    {{ row.quantitySold | number: '1.0-3' }} u. · Q {{ row.totalAmount | number: '1.2-2' }} · Ganancia Q {{ row.estimatedGrossProfit | number: '1.2-2' }}
+                  </span>
+                </div>
+                <div class="h-2.5 w-full overflow-hidden rounded-full bg-slate-100">
+                  <div class="h-full rounded-full bg-violet-500 transition-all" [style.width.%]="percent(row.totalAmount, maxCategoryAmount())"></div>
+                </div>
+              </div>
+            }
           }
         </div>
         <div class="mt-4 overflow-x-auto">
           <table class="min-w-full divide-y divide-slate-200 text-sm">
             <thead class="text-left text-xs font-medium uppercase tracking-wide text-slate-500">
               <tr>
-                <th class="py-2 pr-2">Categoría</th>
+                <th class="py-2 pr-2">Categoría (catálogo)</th>
                 <th class="py-2 px-2 text-right">Unidades</th>
-                <th class="py-2 px-2 text-right">Líneas</th>
-                <th class="py-2 pl-2 text-right">Ingresos</th>
+                <th class="py-2 px-2 text-right">Ingresos</th>
+                <th class="py-2 px-2 text-right">Costo est.</th>
+                <th class="py-2 px-2 text-right">Ganancia est.</th>
+                <th class="py-2 pl-2 text-right">Líneas</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-slate-100">
-              @for (row of salesByCategory(); track row.categoryName) {
-                <tr>
-                  <td class="py-2 pr-2 font-medium text-slate-800">{{ row.categoryName }}</td>
-                  <td class="py-2 px-2 text-right text-slate-700">{{ row.quantitySold | number: '1.0-3' }}</td>
-                  <td class="py-2 px-2 text-right text-slate-700">{{ row.lineCount | number }}</td>
-                  <td class="py-2 pl-2 text-right font-semibold text-slate-800">Q {{ row.totalAmount | number: '1.2-2' }}</td>
+              @for (row of salesByCategory(); track row.categoryId ?? row.categoryName) {
+                <tr [class.text-slate-400]="row.totalAmount === 0">
+                  <td class="py-2 pr-2 font-medium" [class.text-slate-800]="row.totalAmount > 0">{{ row.categoryName }}</td>
+                  <td class="py-2 px-2 text-right">{{ row.quantitySold | number: '1.0-3' }}</td>
+                  <td class="py-2 px-2 text-right font-medium" [class.text-slate-800]="row.totalAmount > 0">
+                    Q {{ row.totalAmount | number: '1.2-2' }}
+                  </td>
+                  <td class="py-2 px-2 text-right">Q {{ row.estimatedCost | number: '1.2-2' }}</td>
+                  <td class="py-2 px-2 text-right font-semibold" [class.text-emerald-700]="row.estimatedGrossProfit > 0" [class.text-rose-700]="row.estimatedGrossProfit < 0">
+                    Q {{ row.estimatedGrossProfit | number: '1.2-2' }}
+                  </td>
+                  <td class="py-2 pl-2 text-right">{{ row.lineCount | number }}</td>
                 </tr>
               }
             </tbody>
           </table>
         </div>
+        }
       }
     </section>
 
