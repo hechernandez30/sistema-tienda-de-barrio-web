@@ -52,8 +52,8 @@ export class ProductFormDialogComponent {
   readonly categories = signal<Category[]>([]);
   readonly unitMeasures = signal<UnitMeasure[]>([]);
   readonly initialLots = signal<InitialLotRow[]>([]);
-
-  readonly tracksExpirationEnabled = computed(() => this.form.controls.tracksExpiration.value);
+  /** Signal propio: FormControl.value no invalida computed de Angular. */
+  readonly tracksExpirationEnabled = signal(false);
 
   readonly title = computed(() => {
     switch (this.data.mode) {
@@ -98,14 +98,18 @@ export class ProductFormDialogComponent {
         tracksExpiration: product.tracksExpiration,
         active: product.active,
       });
+      this.tracksExpirationEnabled.set(product.tracksExpiration);
     }
 
     this.form.controls.tracksExpiration.valueChanges.subscribe((enabled) => {
+      this.tracksExpirationEnabled.set(enabled);
       if (enabled && this.isCreate) {
         this.form.controls.currentStock.setValue(0);
         if (this.initialLots().length === 0) {
           this.addInitialLot();
         }
+      } else if (!enabled) {
+        this.initialLots.set([]);
       }
     });
 
